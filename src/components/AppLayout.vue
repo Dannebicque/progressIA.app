@@ -18,11 +18,13 @@
         </footer>
 
         <Toaster rich-colors position="bottom-right" />
+        <ConfirmDialog />
     </div>
 </template>
 
 <script setup lang="ts">
 import NavBar from './NavBar.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
 </script>
 

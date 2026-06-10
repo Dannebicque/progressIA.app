@@ -130,6 +130,7 @@ import AppLayout from '@/components/AppLayout.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { useCoursesStore } from '@/stores/courses'
 import { showToast } from '@/composables/useToast'
+import { confirmDialog } from '@/composables/useConfirm'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -170,7 +171,7 @@ async function createCourse() {
     showToast('Cours créé')
 }
 async function removeCourse(id: string | number) {
-    if (!confirm('Supprimer ce cours ?')) return
+    if (!(await confirmDialog({ title: 'Supprimer ce cours ?', description: 'Cette action est irréversible et supprimera aussi ses séances et chapitres.', confirmText: 'Supprimer' }))) return
     await store.deleteCourse(id)
     if (selected.value?.id === id) selected.value = null
     showToast('Cours supprimé')
@@ -210,7 +211,7 @@ async function createSession() {
 }
 async function removeSession() {
     if (!selected.value || !selectedSessionId.value) return
-    if (!confirm('Supprimer cette séance ?')) return
+    if (!(await confirmDialog({ title: 'Supprimer cette séance ?', description: 'Les chapitres de cette séance seront également supprimés.', confirmText: 'Supprimer' }))) return
     await store.deleteSession(selected.value.id, selectedSessionId.value)
     selected.value = store.getCourse(selected.value.id)
     selectedSessionId.value = selected.value.sessions[0] ? String(selected.value.sessions[0].id) : ''
@@ -242,7 +243,7 @@ async function createChapter() {
 }
 async function removeChapter() {
     if (!selected.value || !selectedSessionId.value || !selectedChapterId.value) return
-    if (!confirm('Supprimer ce chapitre ?')) return
+    if (!(await confirmDialog({ title: 'Supprimer ce chapitre ?', confirmText: 'Supprimer' }))) return
     await store.deleteChapter(selected.value.id, selectedSessionId.value, selectedChapterId.value)
     selected.value = store.getCourse(selected.value.id)
     selectedChapterId.value = currentSession.value.chapters[0] ? String(currentSession.value.chapters[0].id) : ''

@@ -32,12 +32,14 @@
 
                     <div class="mt-6 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
                         <p class="mb-1 font-medium text-foreground">Comptes de démonstration</p>
-                        <button type="button" class="block hover:text-primary" @click="fill('teacher')">
+                        <Button type="button" variant="ghost" size="sm"
+                            class="h-auto w-full justify-start px-2 py-1 font-normal text-muted-foreground" @click="fill('teacher')">
                             Enseignant — teacher@pedagoflow.test / teacher
-                        </button>
-                        <button type="button" class="block hover:text-primary" @click="fill('student')">
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm"
+                            class="h-auto w-full justify-start px-2 py-1 font-normal text-muted-foreground" @click="fill('student')">
                             Étudiant — student@pedagoflow.test / student
-                        </button>
+                        </Button>
                     </div>
                 </CardContent>
                 <CardFooter class="justify-center text-sm text-muted-foreground">
