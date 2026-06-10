@@ -23,7 +23,7 @@
             <div class="flex items-center gap-3">
                 <router-link to="/courses"
                     class="hidden sm:inline text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Catalogue</router-link>
-                <router-link v-if="auth.user?.role==='teacher'" to="/backoffice"
+                <router-link v-if="auth.isTeacher()" to="/backoffice"
                     class="hidden sm:inline text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Back-office</router-link>
                 <router-link to="/dashboard/student"
                     class="hidden sm:inline text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Mon
@@ -34,7 +34,7 @@
                         <button @click="toggleMenu"
                             class="w-9 h-9 rounded-full bg-white text-indigo-700 flex items-center justify-center">{{ auth.user.name.charAt(0).toUpperCase() }}</button>
                         <div v-if="menu" class="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded shadow py-2 z-20">
-                            <div class="px-3 py-2 text-sm">Connecté · {{ auth.user.role }}</div>
+                            <div class="px-3 py-2 text-sm">Connecté · {{ auth.isTeacher() ? 'enseignant' : 'étudiant' }}</div>
                             <a class="block px-3 py-2 text-sm hover:bg-gray-100" href="#">Mon profil</a>
                             <a @click.prevent="logout" class="block px-3 py-2 text-sm hover:bg-gray-100" href="#">Se déconnecter</a>
                         </div>

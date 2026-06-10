@@ -242,68 +242,75 @@ const editTheme = ref('')
 const editLevel = ref('')
 const editAccent = ref('')
 
-function createCourse() {
-    const c = store.createCourse({ title: 'Nouveau cours', theme: 'Général', accentColor: '#7c3aed', level: 'Débutant' })
+async function createCourse() {
+    const c = await store.createCourse({ title: 'Nouveau cours', theme: 'Général', accentColor: '#7c3aed', level: 'Débutant' })
     selectCourse(c)
 }
 
-function removeCourse(id: string) {
+async function removeCourse(id: string | number) {
     if (!confirm('Supprimer ce cours ?')) return
-    store.deleteCourse(id)
+    await store.deleteCourse(id)
     if (selected.value?.id === id) selected.value = null
 }
 
-function saveCourse() {
+async function saveCourse() {
     if (!selected.value) return
-    store.updateCourse(selected.value.id, { title: editTitle.value, theme: editTheme.value, level: editLevel.value, accentColor: editAccent.value })
+    await store.updateCourse(selected.value.id, { title: editTitle.value, theme: editTheme.value, level: editLevel.value, accentColor: editAccent.value })
     // refresh selected reference
     selected.value = store.getCourse(selected.value.id)
     showToast('Cours sauvegardé')
 }
 
-function duplicateCourse() {
+async function duplicateCourse() {
     if (!selected.value) return
-    const copy = JSON.parse(JSON.stringify(selected.value))
-    copy.title = copy.title + ' (copie)'
-    delete copy.id
-    const newc = store.createCourse(copy)
-    selectCourse(newc)
+    const src = selected.value
+    const newc = await store.createCourse({
+        title: `${src.title} (copie)`, theme: src.theme, context: src.context,
+        accentColor: src.accentColor, level: src.level, scenario: src.scenario,
+    })
+    for (const s of src.sessions) {
+        const ns = await store.addSession(newc.id, { title: s.title, pitch: s.pitch, renderConfig: s.renderConfig })
+        for (const ch of s.chapters) {
+            await store.addChapter(newc.id, ns.id, { title: ch.title, content: ch.content })
+        }
+    }
+    selectCourse(store.getCourse(newc.id))
 }
 
-function createSession() {
+async function createSession() {
     if (!selected.value) return
-    const s = store.addSession(selected.value.id, { title: 'Nouvelle séance' })
+    const s = await store.addSession(selected.value.id, { title: 'Nouvelle séance' })
     selectedSessionId.value = s.id
     // refresh selected reference and load render config
     selected.value = store.getCourse(selected.value.id)
     loadCurrent()
 }
 
-function removeSession() {
+async function removeSession() {
     if (!selected.value || !selectedSessionId.value) return
     if (!confirm('Supprimer cette séance ?')) return
-    store.deleteSession(selected.value.id, selectedSessionId.value)
+    await store.deleteSession(selected.value.id, selectedSessionId.value)
     selectedSessionId.value = selected.value.sessions[0]?.id || ''
 }
 
-function createChapter() {
+async function createChapter() {
     if (!selected.value || !selectedSessionId.value) return
-    const ch = store.addChapter(selected.value.id, selectedSessionId.value, { title: 'Nouveau chapitre', content: '# Titre' })
+    const ch = await store.addChapter(selected.value.id, selectedSessionId.value, { title: 'Nouveau chapitre', content: '# Titre' })
     selectedChapterId.value = ch.id
     loadCurrent()
 }
 
-function removeChapter() {
+async function removeChapter() {
     if (!selected.value || !selectedSessionId.value || !selectedChapterId.value) return
     if (!confirm('Supprimer ce chapitre ?')) return
-    store.deleteChapter(selected.value.id, selectedSessionId.value, selectedChapterId.value)
+    await store.deleteChapter(selected.value.id, selectedSessionId.value, selectedChapterId.value)
     selectedChapterId.value = currentSession.value.chapters[0]?.id || ''
     loadCurrent()
 }
 
-function saveChapter() {
+async function saveChapter() {
     if (!selected.value || !selectedSessionId.value || !selectedChapterId.value) return
-    store.updateChapter(selected.value.id, selectedSessionId.value, selectedChapterId.value, { content: currentContent.value })
+    await store.updateChapter(selected.value.id, selectedSessionId.value, selectedChapterId.value, { content: currentContent.value })
     showToast('Chapitre sauvegardé')
 }
 
@@ -334,10 +341,10 @@ function loadRenderConfig() {
     editRender_maxFiles.value = rc.maxFiles ?? 1
 }
 
-function saveSessionRenderConfig() {
+async function saveSessionRenderConfig() {
     if (!selected.value || !selectedSessionId.value) return
     const cfg = { allowUpload: editRender_allowUpload.value, allowedTypes: editRender_allowedTypes.value, maxFiles: editRender_maxFiles.value }
-    store.updateSession(selected.value.id, selectedSessionId.value, { renderConfig: cfg })
+    await store.updateSession(selected.value.id, selectedSessionId.value, { renderConfig: cfg })
     // refresh selected reference
     selected.value = store.getCourse(selected.value.id)
     showToast('Options de rendu sauvegardées')
