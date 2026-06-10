@@ -35,6 +35,7 @@ security:
 
     access_control:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api/me, roles: ROLE_USER }
         # Public reads of the catalogue; writes are guarded per-operation in the entities.
