@@ -45,6 +45,11 @@ class Course
     #[Groups(['course:read', 'course:write'])]
     private ?string $theme = null;
 
+    /** back | front | fullstack | other — drives the themed badges. */
+    #[ORM\Column(length: 20, nullable: true)]
+    #[Groups(['course:read', 'course:write'])]
+    private ?string $category = null;
+
     #[ORM\Column(type: 'text', nullable: true)]
     #[Groups(['course:read', 'course:write'])]
     private ?string $context = null;
@@ -97,6 +102,18 @@ class Course
     public function setTheme(?string $theme): static
     {
         $this->theme = $theme;
+
+        return $this;
+    }
+
+    public function getCategory(): ?string
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?string $category): static
+    {
+        $this->category = $category;
 
         return $this;
     }

@@ -6,6 +6,8 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use App\Repository\UserRepository;
 use App\State\MeProvider;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -56,9 +58,47 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read'])]
     private int $points = 0;
 
+    /** @var Collection<int, Badge> */
+    #[ORM\OneToMany(targetEntity: Badge::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
+    #[ORM\OrderBy(['awardedAt' => 'DESC'])]
+    #[Groups(['user:read'])]
+    private Collection $badges;
+
+    public function __construct()
+    {
+        $this->badges = new ArrayCollection();
+    }
+
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    /** @return Collection<int, Badge> */
+    public function getBadges(): Collection
+    {
+        return $this->badges;
+    }
+
+    public function addBadge(Badge $badge): static
+    {
+        if (!$this->badges->contains($badge)) {
+            $this->badges->add($badge);
+            $badge->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function hasBadge(string $code): bool
+    {
+        foreach ($this->badges as $b) {
+            if ($b->getCode() === $code) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function getEmail(): ?string
