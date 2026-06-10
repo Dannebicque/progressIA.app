@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
 
@@ -15,17 +16,6 @@ const root = ref<HTMLElement | null>(null)
 marked.setOptions({
     gfm: true,
     breaks: false,
-    smartypants: true,
-    highlight: function (code, lang) {
-        try {
-            if (lang && hljs.getLanguage(lang)) {
-                return hljs.highlight(code, { language: lang }).value
-            }
-            return hljs.highlightAuto(code).value
-        } catch (e) {
-            return code
-        }
-    }
 })
 
 function enhanceCodeBlocks() {
@@ -56,7 +46,8 @@ function enhanceCodeBlocks() {
 
 watch(() => props.source, async (v) => {
     try {
-        html.value = marked.parse(v || '')
+        const raw = marked.parse(v || '') as string
+        html.value = DOMPurify.sanitize(raw)
         await nextTick()
         // highlight.js already applied via marked.highlight option,
         // but run highlightAll for safety

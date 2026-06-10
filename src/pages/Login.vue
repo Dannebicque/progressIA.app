@@ -1,46 +1,71 @@
 <template>
-    <AppLayout>
-        <div class="max-w-md mx-auto bg-white rounded-xl p-6 shadow mt-12">
-            <h2 class="text-xl font-bold mb-4">Connexion</h2>
-            <form @submit.prevent="submit" class="space-y-4">
-                <input v-model="email" type="email" placeholder="Email" autocomplete="username"
-                    class="w-full border rounded px-3 py-2" />
-                <input v-model="password" type="password" placeholder="Mot de passe" autocomplete="current-password"
-                    class="w-full border rounded px-3 py-2" />
-                <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-                <div class="flex gap-2">
-                    <button type="submit" :disabled="loading"
-                        class="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-60">
-                        {{ loading ? 'Connexion…' : 'Se connecter' }}
-                    </button>
-                    <router-link to="/" class="px-4 py-2 border rounded">Annuler</router-link>
-                </div>
-            </form>
-            <div class="mt-6 text-xs text-gray-500 space-y-1">
-                <p class="font-medium text-gray-600">Comptes de démonstration :</p>
-                <button type="button" @click="fill('teacher')" class="block hover:text-indigo-600">
-                    Enseignant — teacher@pedagoflow.test / teacher
-                </button>
-                <button type="button" @click="fill('student')" class="block hover:text-indigo-600">
-                    Étudiant — student@pedagoflow.test / student
-                </button>
-            </div>
+    <div class="min-h-screen grid place-items-center bg-gradient-to-b from-indigo-50 via-background to-background px-4">
+        <div class="w-full max-w-md">
+            <RouterLink to="/" class="mb-6 flex items-center justify-center gap-3">
+                <div class="grid size-11 place-items-center rounded-xl bg-brand-gradient font-bold text-white">PF</div>
+                <span class="text-xl font-semibold tracking-tight">PedagoFlow</span>
+            </RouterLink>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle class="text-xl">Connexion</CardTitle>
+                    <CardDescription>Accédez à vos cours et à votre progression.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form class="space-y-4" @submit.prevent="submit">
+                        <div class="space-y-2">
+                            <Label for="email">Email</Label>
+                            <Input id="email" v-model="email" type="email" autocomplete="username"
+                                placeholder="vous@exemple.fr" :aria-invalid="!!error || undefined" />
+                        </div>
+                        <div class="space-y-2">
+                            <Label for="password">Mot de passe</Label>
+                            <Input id="password" v-model="password" type="password" autocomplete="current-password"
+                                placeholder="••••••••" :aria-invalid="!!error || undefined" />
+                        </div>
+                        <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
+                        <Button type="submit" class="w-full" :disabled="loading">
+                            <IconLoader2 v-if="loading" class="size-4 animate-spin" />
+                            {{ loading ? 'Connexion…' : 'Se connecter' }}
+                        </Button>
+                    </form>
+
+                    <div class="mt-6 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
+                        <p class="mb-1 font-medium text-foreground">Comptes de démonstration</p>
+                        <button type="button" class="block hover:text-primary" @click="fill('teacher')">
+                            Enseignant — teacher@pedagoflow.test / teacher
+                        </button>
+                        <button type="button" class="block hover:text-primary" @click="fill('student')">
+                            Étudiant — student@pedagoflow.test / student
+                        </button>
+                    </div>
+                </CardContent>
+                <CardFooter class="justify-center text-sm text-muted-foreground">
+                    Pas encore de compte ?
+                    <RouterLink to="/register" class="ml-1 font-medium text-primary hover:underline">Créer un compte</RouterLink>
+                </CardFooter>
+            </Card>
         </div>
-    </AppLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import AppLayout from '../components/AppLayout.vue'
-import { useAuthStore } from '../stores/auth'
-import { ApiError } from '../api/client'
+import { useRouter, useRoute } from 'vue-router'
+import { IconLoader2 } from '@tabler/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { ApiError } from '@/api/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 function fill(role: 'teacher' | 'student') {
@@ -57,7 +82,8 @@ async function submit() {
     loading.value = true
     try {
         await auth.login(email.value, password.value)
-        router.push('/')
+        const redirect = (route.query.redirect as string) || '/'
+        router.push(redirect)
     } catch (e) {
         error.value = e instanceof ApiError && e.status === 401
             ? 'Identifiants invalides.'
@@ -67,5 +93,3 @@ async function submit() {
     }
 }
 </script>
-
-<style scoped></style>

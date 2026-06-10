@@ -1,144 +1,107 @@
 <template>
     <AppLayout>
-        <div v-if="course">
-            <section class="rounded-xl mb-6 overflow-hidden">
-                <div :style="{ background: `linear-gradient(90deg, ${course.accentColor}22, ${course.accentColor}55)` }"
-                    class="p-6">
-                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                        <div class="flex items-start gap-4">
-                            <div class="w-24 h-24 rounded-lg flex items-center justify-center"
-                                :style="{ background: `linear-gradient(135deg, ${course.accentColor}33, ${course.accentColor}66)` }">
-                                <svg class="w-10 h-10 text-indigo-700" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                        d="M12 20l9-5-9-5-9 5 9 5z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h1 class="text-2xl font-bold">{{ course.title }}</h1>
-                                <p class="text-sm text-gray-600 mt-1">{{ course.theme }} · {{ course.context }}</p>
-                                <p class="text-sm text-gray-700 mt-3">{{ course.scenario }}</p>
-                            </div>
+        <div v-if="course" class="space-y-6">
+            <!-- header -->
+            <Card class="overflow-hidden pt-0">
+                <div class="h-2 w-full" :style="{ background: accent }"></div>
+                <CardContent class="flex flex-col gap-6 pt-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex items-start gap-4">
+                        <div class="grid size-16 shrink-0 place-items-center rounded-2xl text-white"
+                            :style="{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }">
+                            <IconSchool class="size-8" />
                         </div>
-
-                        <div class="flex gap-4 w-full lg:w-auto">
-                            <div class="bg-white px-4 py-3 rounded-lg text-center shadow-sm">
-                                <div class="text-sm text-gray-500">Séances</div>
-                                <div class="font-semibold text-lg">{{ course.sessions.length }}</div>
-                            </div>
-                            <div class="bg-white px-4 py-3 rounded-lg text-center shadow-sm">
-                                <div class="text-sm text-gray-500">Durée</div>
-                                <div class="font-semibold text-lg">{{ totalDuration }} min</div>
-                            </div>
-                            <div :style="{ background: course.accentColor }"
-                                class="px-4 py-3 rounded-lg text-center text-white shadow-sm">
-                                <div class="text-sm">Points</div>
-                                <div class="font-semibold text-lg">{{ totalPoints }}</div>
-                            </div>
-                            <div class="bg-white px-4 py-3 rounded-lg text-center shadow-sm">
-                                <div class="text-sm text-gray-500">Progression</div>
-                                <div class="font-semibold text-lg">{{ pct }}%</div>
-                            </div>
+                        <div>
+                            <h1 class="text-2xl font-bold tracking-tight">{{ course.title }}</h1>
+                            <p class="text-sm text-muted-foreground">{{ course.theme }}<span v-if="course.context"> · {{ course.context }}</span></p>
+                            <p class="mt-2 max-w-2xl text-sm">{{ course.scenario }}</p>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <div class="grid lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                    <div class="bg-white rounded-xl p-6 shadow">
-                        <h2 class="text-2xl font-bold">{{ course.title }}</h2>
-                        <p class="text-sm text-gray-600">{{ course.theme }} — {{ course.context }}</p>
-                        <p class="mt-2 text-gray-700">{{ course.scenario }}</p>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-auto">
+                        <Stat label="Séances" :value="course.sessions.length" />
+                        <Stat label="Durée" :value="`${course.sessions.length * 30} min`" />
+                        <Stat label="Points" :value="course.sessions.length * 20" />
+                        <Stat label="Progression" :value="`${pct}%`" :accent="accent" />
                     </div>
+                </CardContent>
+            </Card>
 
-                    <div class="mt-6 space-y-3">
-                        <h3 class="text-lg font-semibold">Séances</h3>
-                        <div v-for="s in course.sessions" :key="s.id"
-                            :class="['rounded-lg p-4 shadow flex items-center justify-between', s.id === route.params.sid ? 'border-l-4' : '']"
-                            :style="s.id === route.params.sid ? { borderColor: course.accentColor } : {}">
-                            <div>
-                                <div class="font-medium">{{ s.title }}</div>
-                                <div class="text-sm text-gray-500">{{ s.chapters.length }} chapitres</div>
-                            </div>
+            <div class="grid gap-6 lg:grid-cols-3">
+                <!-- sessions -->
+                <div class="space-y-3 lg:col-span-2">
+                    <h2 class="text-lg font-semibold tracking-tight">Séances</h2>
+                    <Card v-for="(s, i) in course.sessions" :key="s.id">
+                        <CardContent class="flex items-center justify-between gap-4 py-4">
                             <div class="flex items-center gap-3">
-                                <router-link :to="`/course/${course.id}/session/${s.id}`"
-                                    :style="{ background: `linear-gradient(90deg, ${course.accentColor} 0%, ${course.accentColor}bb 100%)`, borderColor: course.accentColor }"
-                                    class="px-4 py-2 text-white rounded-full font-medium">Commencer</router-link>
+                                <div class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-sm font-semibold text-accent-foreground">{{ Number(i) + 1 }}</div>
+                                <div>
+                                    <div class="font-medium">{{ s.title }}</div>
+                                    <div class="text-sm text-muted-foreground">{{ s.chapters.length }} chapitres</div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                            <RouterLink :to="`/course/${course.id}/session/${s.id}`">
+                                <Button size="sm">Commencer <IconArrowRight class="size-4" /></Button>
+                            </RouterLink>
+                        </CardContent>
+                    </Card>
+                    <Card v-if="!course.sessions.length" class="grid place-items-center py-10 text-center text-muted-foreground">
+                        Aucune séance pour ce cours.
+                    </Card>
                 </div>
 
-                <aside class="bg-white rounded-xl p-4 shadow">
-                    <h4 class="font-semibold">Progression</h4>
-                    <p class="text-sm text-gray-600 mt-2">Progression estimée pour l'utilisateur.</p>
-                    <div class="mt-4">
-                        <div class="flex justify-between text-sm text-gray-600"><span>Sessions complétées</span><span>{{
-                            completed }} / {{ course.sessions.length }}</span></div>
-                        <div class="w-full bg-gray-200 rounded-full h-3 mt-2">
-                            <div :style="{ width: pct + '%', background: course.accentColor }" class="h-3 rounded-full">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6">
-                        <h5 class="font-semibold">Badges</h5>
-                        <div class="mt-2 flex gap-2 flex-wrap">
-                            <div v-for="b in badges" :key="b.id"
-                                class="text-center text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded">{{ b.title }}
-                            </div>
-                            <div v-if="badges.length === 0" class="text-sm text-gray-500">Aucun badge pour le moment
-                            </div>
-                        </div>
-                    </div>
+                <!-- aside -->
+                <aside class="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-base">Progression</CardTitle>
+                            <CardDescription>{{ completed }} / {{ course.sessions.length }} séances validées</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Progress :model-value="pct" />
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader><CardTitle class="text-base">Badges</CardTitle></CardHeader>
+                        <CardContent class="flex flex-wrap gap-2">
+                            <Badge v-for="b in badges" :key="b.id" variant="secondary" class="gap-1">
+                                <IconAward class="size-3.5 text-amber-500" />{{ b.title }}
+                            </Badge>
+                            <p v-if="!badges.length" class="text-sm text-muted-foreground">Aucun badge pour le moment.</p>
+                        </CardContent>
+                    </Card>
                 </aside>
             </div>
         </div>
-        <div v-else>
-            <p>Cours introuvable</p>
-        </div>
+
+        <Card v-else class="grid place-items-center py-16 text-center text-muted-foreground">Cours introuvable.</Card>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
 import { computed } from 'vue'
-import AppLayout from '../components/AppLayout.vue'
-import { useCoursesStore } from '../stores/courses'
+import { useRoute } from 'vue-router'
+import { IconSchool, IconArrowRight, IconAward } from '@tabler/icons-vue'
+import AppLayout from '@/components/AppLayout.vue'
+import Stat from '@/components/StatPill.vue'
+import { useCoursesStore } from '@/stores/courses'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const route = useRoute()
 const store = useCoursesStore()
-const course = store.getCourse(route.params.id as string)
 const studentId = 'student1'
+const course = computed(() => store.getCourse(route.params.id as string))
+const accent = computed(() => course.value?.accentColor || '#7c3aed')
 
 const completed = computed(() => {
-    if (!course) return 0
-    const p = store.getProgress(studentId, course.id)
-    let cnt = 0
-    for (const s of course.sessions) {
-        if (p[s.id]?.done) cnt++
-    }
-    return cnt
+    if (!course.value) return 0
+    const p = store.getProgress(studentId, course.value.id)
+    return course.value.sessions.filter((s: any) => p[s.id]?.done).length
 })
-
 const pct = computed(() => {
-    if (!course) return 0
-    return Math.round((completed.value / course.sessions.length) * 100)
+    if (!course.value || !course.value.sessions.length) return 0
+    return Math.round((completed.value / course.value.sessions.length) * 100)
 })
-
 const badges = computed(() => store.getBadges(studentId))
-
-const totalDuration = computed(() => {
-    if (!course) return 0
-    // placeholder: assume 30 min per session
-    return course.sessions.length * 30
-})
-
-const totalPoints = computed(() => {
-    if (!course) return 0
-    return course.sessions.length * 20
-})
 </script>
-
-<style scoped></style>

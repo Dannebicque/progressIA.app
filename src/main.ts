@@ -13,17 +13,9 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
-// route guard: protect routes with meta.requiresTeacher
-router.beforeEach((to, _from, next) => {
-  const auth = useAuthStore(pinia)
-  if (to.meta?.requiresTeacher && !auth.isTeacher()) {
-    return next('/login')
-  }
-  next()
-})
-
-// Bootstrap: load the catalogue from the API (and refresh the profile if a
-// token is present) before mounting, so synchronous getCourse() calls resolve.
+// Bootstrap: restore the profile if a token is present, and preload the
+// catalogue, before mounting. The global navigation guard (in router/index.ts)
+// enforces authentication for every non-public route.
 async function bootstrap() {
   const courses = useCoursesStore(pinia)
   const auth = useAuthStore(pinia)

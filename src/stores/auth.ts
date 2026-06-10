@@ -31,6 +31,18 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('pf:user', JSON.stringify(user))
       return user
     },
+    // Create an account then sign in automatically.
+    async register(name: string, email: string, password: string): Promise<AuthUser> {
+      await api.post('/api/register', { name, email, password }, { anonymous: true })
+      return this.login(email, password)
+    },
+    // Update the authenticated user's own profile (name / email / password).
+    async updateAccount(payload: { name?: string; email?: string; password?: string }): Promise<AuthUser> {
+      const user = await api.patch<AuthUser>('/api/account', payload)
+      this.user = user
+      localStorage.setItem('pf:user', JSON.stringify(user))
+      return user
+    },
     logout() {
       this.user = null
       this.token = null
