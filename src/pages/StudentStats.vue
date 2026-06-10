@@ -11,41 +11,43 @@
         <!-- KPI -->
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard :icon="IconStar" label="Points" :value="points" tint="amber" />
-            <StatCard :icon="IconBook" label="Cours suivis" :value="courses.length" tint="indigo" />
-            <StatCard :icon="IconCircleCheck" label="Séances validées" :value="totalDone" :sub="`/ ${totalSessions}`" tint="emerald" />
+            <StatCard :icon="IconBook" label="Cours" :value="courses.length" tint="indigo" />
+            <StatCard :icon="IconCircleCheck" label="Pages validées" :value="donePages" :sub="`/ ${totalPages}`" tint="emerald" />
             <StatCard :icon="IconTrophy" label="Badges" :value="badges.length" tint="pink" />
         </div>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-3">
-            <!-- progress per course -->
             <Card class="lg:col-span-2">
                 <CardHeader>
                     <CardTitle>Progression par cours</CardTitle>
-                    <CardDescription>Pourcentage de séances validées.</CardDescription>
+                    <CardDescription>Pourcentage de pages terminées.</CardDescription>
                 </CardHeader>
                 <CardContent class="space-y-5">
                     <div v-for="c in courses" :key="c.id">
                         <div class="mb-1.5 flex items-center justify-between text-sm">
                             <span class="font-medium">{{ c.title }}</span>
-                            <span class="text-muted-foreground">{{ completed(c) }} / {{ c.sessions.length }} · {{ pct(c) }}%</span>
+                            <span class="text-muted-foreground">{{ gam.coursePct(c) }}%</span>
                         </div>
-                        <Progress :model-value="pct(c)" />
+                        <Progress :model-value="gam.coursePct(c)" />
                     </div>
                     <p v-if="!courses.length" class="text-sm text-muted-foreground">Aucun cours disponible.</p>
                 </CardContent>
             </Card>
 
-            <!-- badges -->
             <Card>
                 <CardHeader>
                     <CardTitle>Mes badges</CardTitle>
                     <CardDescription>Récompenses débloquées.</CardDescription>
                 </CardHeader>
-                <CardContent class="flex flex-wrap gap-2">
-                    <Badge v-for="b in badges" :key="b.id" variant="secondary" class="gap-1 py-1">
-                        <IconAward class="size-3.5 text-amber-500" /> {{ b.title }}
-                    </Badge>
-                    <p v-if="!badges.length" class="text-sm text-muted-foreground">Aucun badge pour le moment. Terminez des séances pour en gagner&nbsp;!</p>
+                <CardContent class="space-y-2">
+                    <div v-for="b in badges" :key="b.code" class="flex items-center gap-3 rounded-lg border p-2">
+                        <span class="text-2xl">{{ b.icon }}</span>
+                        <div>
+                            <div class="text-sm font-medium">{{ b.label }}</div>
+                            <div v-if="b.description" class="text-xs text-muted-foreground">{{ b.description }}</div>
+                        </div>
+                    </div>
+                    <p v-if="!badges.length" class="text-sm text-muted-foreground">Aucun badge. Terminez des pages et des quiz pour en gagner&nbsp;!</p>
                 </CardContent>
             </Card>
         </div>
@@ -54,31 +56,23 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { IconStar, IconBook, IconCircleCheck, IconTrophy, IconAward, IconUser } from '@tabler/icons-vue'
+import { IconStar, IconBook, IconCircleCheck, IconTrophy, IconUser } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useCoursesStore } from '@/stores/courses'
+import { useGamificationStore } from '@/stores/gamification'
 import { useAuthStore } from '@/stores/auth'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const store = useCoursesStore()
+const gam = useGamificationStore()
 const auth = useAuthStore()
-const studentId = 'student1'
-store.seedDemo(studentId)
 
 const courses = computed(() => store.courses)
-const points = computed(() => store.getPoints(studentId))
-const badges = computed(() => store.getBadges(studentId))
-
-function completed(c: any) {
-    const p = store.getProgress(studentId, c.id)
-    return c.sessions.filter((s: any) => p[s.id]?.done).length
-}
-function pct(c: any) {
-    return c.sessions.length ? Math.round((completed(c) / c.sessions.length) * 100) : 0
-}
-const totalSessions = computed(() => courses.value.reduce((a, c) => a + c.sessions.length, 0))
-const totalDone = computed(() => courses.value.reduce((a, c) => a + completed(c), 0))
+const points = computed(() => auth.user?.points ?? 0)
+const badges = computed(() => auth.user?.badges || [])
+const totalPages = computed(() => courses.value.reduce((a, c) => a + gam.coursePageIds(c).length, 0))
+const donePages = computed(() => gam.completedPageIds.length)
 </script>

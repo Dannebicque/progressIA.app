@@ -1,23 +1,16 @@
 import { defineStore } from 'pinia'
 import { api } from '../api/client'
 
-// NOTE: The course/session/chapter tree is now backed by the Symfony API.
-// Gamification (progress / points / badges / uploads / evaluations) is still
-// kept in localStorage — it will move to the API in a later phase.
+// Course → Session → Chapter → { Page | Evaluation → Question → Choice }
+// Backed by the Symfony API. Write operations hit the API then refetch the tree
+// so the local state always mirrors the server (simple and robust for a CRUD UI).
 
 export const useCoursesStore = defineStore('courses', {
   state: () => ({
     courses: [] as any[],
     loaded: false,
-    progress: JSON.parse(localStorage.getItem('pf:progress') || '{}') as Record<string, any>,
-    points: JSON.parse(localStorage.getItem('pf:points') || '{}') as Record<string, number>,
-    badges: JSON.parse(localStorage.getItem('pf:badges') || '{}') as Record<string, any[]>,
   }),
   actions: {
-    // ---- Courses tree (API-backed) -------------------------------------
-
-    // Load the full catalogue (courses -> sessions -> chapters) from the API.
-    // Mutates the array in place so references captured by components stay reactive.
     async fetchCourses() {
       const data = await api.get<any[]>('/api/courses', { anonymous: true })
       this.courses.splice(0, this.courses.length, ...data)
@@ -25,221 +18,167 @@ export const useCoursesStore = defineStore('courses', {
       return this.courses
     },
 
+    // ---- tree lookups ----
     getCourse(id: string | number) {
       return this.courses.find((c) => String(c.id) === String(id))
     },
+    findSession(id: string | number): any {
+      for (const c of this.courses) {
+        const s = c.sessions?.find((s: any) => String(s.id) === String(id))
+        if (s) return s
+      }
+      return null
+    },
+    findChapter(id: string | number): any {
+      for (const c of this.courses)
+        for (const s of c.sessions || []) {
+          const ch = s.chapters?.find((ch: any) => String(ch.id) === String(id))
+          if (ch) return ch
+        }
+      return null
+    },
 
+    // ---- Course ----
     async createCourse(payload: any) {
-      const { id: _omit, sessions: _omitSessions, ...body } = payload
+      const { id: _i, sessions: _s, ...body } = payload
       const course = await api.post<any>('/api/courses', { sessions: [], ...body })
-      if (!course.sessions) course.sessions = []
-      this.courses.push(course)
-      return course
+      await this.fetchCourses()
+      return this.getCourse(course.id) ?? course
     },
-
     async updateCourse(id: string | number, patch: any) {
-      const course = this.getCourse(id)
-      if (!course) return null
-      const updated = await api.patch<any>(`/api/courses/${course.id}`, patch)
-      Object.assign(course, updated)
-      return course
+      const r = await api.patch<any>(`/api/courses/${id}`, patch)
+      await this.fetchCourses()
+      return this.getCourse(id) ?? r
     },
-
     async deleteCourse(id: string | number) {
-      const course = this.getCourse(id)
-      if (!course) return
-      await api.delete(`/api/courses/${course.id}`)
-      const idx = this.courses.indexOf(course)
-      if (idx !== -1) this.courses.splice(idx, 1)
+      await api.delete(`/api/courses/${id}`)
+      await this.fetchCourses()
     },
 
-    async addSession(courseId: string | number, session: any) {
+    // ---- Session ----
+    async addSession(courseId: string | number, session: any = {}) {
       const course = this.getCourse(courseId)
-      if (!course) return null
-      const body = {
+      const r = await api.post<any>('/api/sessions', {
         title: session.title || 'Nouvelle séance',
         pitch: session.pitch ?? null,
         renderConfig: session.renderConfig || { allowUpload: true, allowedTypes: ['file', 'image'], maxFiles: 1 },
-        position: course.sessions.length,
-        course: `/api/courses/${course.id}`,
-      }
-      const created = await api.post<any>('/api/sessions', body)
-      if (!created.chapters) created.chapters = []
-      course.sessions.push(created)
-      return created
+        position: course?.sessions?.length ?? 0,
+        course: `/api/courses/${courseId}`,
+      })
+      await this.fetchCourses()
+      return this.findSession(r.id) ?? r
+    },
+    async updateSession(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/sessions/${id}`, patch)
+      await this.fetchCourses()
+      return this.findSession(id) ?? r
+    },
+    async deleteSession(id: string | number) {
+      await api.delete(`/api/sessions/${id}`)
+      await this.fetchCourses()
     },
 
-    async updateSession(courseId: string | number, sessionId: string | number, patch: any) {
-      const course = this.getCourse(courseId)
-      const sess = course?.sessions.find((s: any) => String(s.id) === String(sessionId))
-      if (!sess) return null
-      const updated = await api.patch<any>(`/api/sessions/${sess.id}`, patch)
-      Object.assign(sess, updated)
-      return sess
-    },
-
-    async deleteSession(courseId: string | number, sessionId: string | number) {
-      const course = this.getCourse(courseId)
-      const sess = course?.sessions.find((s: any) => String(s.id) === String(sessionId))
-      if (!sess) return
-      await api.delete(`/api/sessions/${sess.id}`)
-      const idx = course.sessions.indexOf(sess)
-      if (idx !== -1) course.sessions.splice(idx, 1)
-    },
-
-    async addChapter(courseId: string | number, sessionId: string | number, chapter: any) {
-      const course = this.getCourse(courseId)
-      const sess = course?.sessions.find((s: any) => String(s.id) === String(sessionId))
-      if (!sess) return null
-      const body = {
+    // ---- Chapter ----
+    async addChapter(sessionId: string | number, chapter: any = {}) {
+      const session = this.findSession(sessionId)
+      const r = await api.post<any>('/api/chapters', {
         title: chapter.title || 'Nouveau chapitre',
-        content: chapter.content || '',
-        position: sess.chapters.length,
-        session: `/api/sessions/${sess.id}`,
-      }
-      const created = await api.post<any>('/api/chapters', body)
-      sess.chapters.push(created)
-      return created
+        position: session?.chapters?.length ?? 0,
+        session: `/api/sessions/${sessionId}`,
+      })
+      await this.fetchCourses()
+      return this.findChapter(r.id) ?? r
+    },
+    async updateChapter(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/chapters/${id}`, patch)
+      await this.fetchCourses()
+      return this.findChapter(id) ?? r
+    },
+    async deleteChapter(id: string | number) {
+      await api.delete(`/api/chapters/${id}`)
+      await this.fetchCourses()
     },
 
-    async updateChapter(courseId: string | number, sessionId: string | number, chapterId: string | number, patch: any) {
-      const course = this.getCourse(courseId)
-      const sess = course?.sessions.find((s: any) => String(s.id) === String(sessionId))
-      const ch = sess?.chapters.find((c: any) => String(c.id) === String(chapterId))
-      if (!ch) return null
-      const updated = await api.patch<any>(`/api/chapters/${ch.id}`, patch)
-      Object.assign(ch, updated)
-      return ch
+    // ---- Page ----
+    async addPage(chapterId: string | number, page: any = {}) {
+      const chapter = this.findChapter(chapterId)
+      const r = await api.post<any>('/api/pages', {
+        title: page.title || 'Nouvelle page',
+        content: page.content || '# Titre',
+        points: page.points ?? 5,
+        position: chapter?.pages?.length ?? 0,
+        chapter: `/api/chapters/${chapterId}`,
+      })
+      await this.fetchCourses()
+      return r
+    },
+    async updatePage(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/pages/${id}`, patch)
+      await this.fetchCourses()
+      return r
+    },
+    async deletePage(id: string | number) {
+      await api.delete(`/api/pages/${id}`)
+      await this.fetchCourses()
     },
 
-    async deleteChapter(courseId: string | number, sessionId: string | number, chapterId: string | number) {
-      const course = this.getCourse(courseId)
-      const sess = course?.sessions.find((s: any) => String(s.id) === String(sessionId))
-      const ch = sess?.chapters.find((c: any) => String(c.id) === String(chapterId))
-      if (!ch) return
-      await api.delete(`/api/chapters/${ch.id}`)
-      const idx = sess.chapters.indexOf(ch)
-      if (idx !== -1) sess.chapters.splice(idx, 1)
+    // ---- Evaluation (authoring) ----
+    // Teacher-only read that includes the correct answers.
+    async fetchEvaluationAdmin(id: string | number) {
+      return api.get<any>(`/api/evaluations/${id}`)
+    },
+    async addEvaluation(chapterId: string | number, evaluation: any = {}) {
+      const chapter = this.findChapter(chapterId)
+      const r = await api.post<any>('/api/evaluations', {
+        title: evaluation.title || 'Nouvelle évaluation',
+        description: evaluation.description ?? null,
+        pointsReward: evaluation.pointsReward ?? 20,
+        position: (chapter?.evaluations?.length ?? 0),
+        chapter: `/api/chapters/${chapterId}`,
+      })
+      await this.fetchCourses()
+      return r
+    },
+    async updateEvaluation(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/evaluations/${id}`, patch)
+      await this.fetchCourses()
+      return r
+    },
+    async deleteEvaluation(id: string | number) {
+      await api.delete(`/api/evaluations/${id}`)
+      await this.fetchCourses()
     },
 
-    // ---- Gamification (localStorage — phase 2) -------------------------
-
-    seedDemo(studentId = 'student1') {
-      if (!localStorage.getItem('pf:progress')) {
-        const now = Date.now()
-        const demoProgress: Record<string, any> = {}
-        demoProgress[studentId] = {}
-        for (const c of this.courses) {
-          demoProgress[studentId][c.id] = {}
-          for (const s of c.sessions) {
-            demoProgress[studentId][c.id][s.id] = { done: false }
-          }
-        }
-        this.progress = demoProgress
-        localStorage.setItem('pf:progress', JSON.stringify(this.progress))
-      }
-      if (!localStorage.getItem('pf:points')) {
-        this.points = { [studentId]: 120 }
-        localStorage.setItem('pf:points', JSON.stringify(this.points))
-      }
-      if (!localStorage.getItem('pf:badges')) {
-        this.badges = { [studentId]: [] }
-        localStorage.setItem('pf:badges', JSON.stringify(this.badges))
-      }
+    // ---- Question / Choice ----
+    async addQuestion(evaluationId: string | number, question: any = {}) {
+      return api.post<any>('/api/questions', {
+        type: question.type || 'qcm',
+        statement: question.statement || 'Nouvelle question',
+        points: question.points ?? 1,
+        multiple: question.multiple ?? false,
+        position: question.position ?? 0,
+        evaluation: `/api/evaluations/${evaluationId}`,
+      })
     },
-
-    getStudentsForCourse(courseId: string | number) {
-      const out: string[] = []
-      const all = JSON.parse(localStorage.getItem('pf:progress') || '{}') as Record<string, any>
-      for (const sid of Object.keys(all)) {
-        if (all[sid] && all[sid][courseId]) out.push(sid)
-      }
-      return out
+    async updateQuestion(id: string | number, patch: any) {
+      return api.patch<any>(`/api/questions/${id}`, patch)
     },
-
-    getUploadsForSession(courseId: string | number, sessionId: string | number) {
-      const uploads: Record<string, any[]> = {}
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i) || ''
-          if (k.startsWith(`pf:upload:${courseId}:${sessionId}:`)) {
-            const student = k.split(':').pop() || ''
-            const v = localStorage.getItem(k)
-            try {
-              uploads[student] = JSON.parse(v || 'null') || [v]
-            } catch {
-              uploads[student] = [v]
-            }
-          }
-        }
-      } catch {}
-      return uploads
+    async deleteQuestion(id: string | number) {
+      return api.delete(`/api/questions/${id}`)
     },
-
-    saveEvaluation(studentId: string, courseId: string | number, sessionId: string | number, evalObj: any) {
-      const key = 'pf:evaluations'
-      const all = JSON.parse(localStorage.getItem(key) || '{}') as Record<string, any>
-      all[studentId] = all[studentId] || {}
-      all[studentId][courseId] = all[studentId][courseId] || {}
-      all[studentId][courseId][sessionId] = { ...evalObj, at: Date.now() }
-      localStorage.setItem(key, JSON.stringify(all))
+    async addChoice(questionId: string | number, choice: any = {}) {
+      return api.post<any>('/api/choices', {
+        text: choice.text || 'Réponse',
+        correct: choice.correct ?? false,
+        position: choice.position ?? 0,
+        question: `/api/questions/${questionId}`,
+      })
     },
-
-    getEvaluations(studentId: string, courseId: string | number) {
-      const all = JSON.parse(localStorage.getItem('pf:evaluations') || '{}') as Record<string, any>
-      return (all[studentId] && all[studentId][courseId]) || {}
+    async updateChoice(id: string | number, patch: any) {
+      return api.patch<any>(`/api/choices/${id}`, patch)
     },
-
-    saveProgress(studentId: string, courseId: string | number, sessionId: string | number, value: any) {
-      this.progress[studentId] = this.progress[studentId] || {}
-      this.progress[studentId][courseId] = this.progress[studentId][courseId] || {}
-      this.progress[studentId][courseId][sessionId] = value
-      localStorage.setItem('pf:progress', JSON.stringify(this.progress))
-      try {
-        if (value && value.done) this.checkCourseCompletion(studentId, courseId)
-      } catch {}
-    },
-
-    getProgress(studentId: string, courseId: string | number) {
-      return this.progress[studentId]?.[courseId] || {}
-    },
-
-    awardPoints(studentId: string, pts: number) {
-      this.points[studentId] = (this.points[studentId] || 0) + pts
-      this.points = { ...this.points }
-      localStorage.setItem('pf:points', JSON.stringify(this.points))
-    },
-
-    getPoints(studentId: string) {
-      return this.points[studentId] || 0
-    },
-
-    awardBadge(studentId: string, badge: any) {
-      this.badges[studentId] = this.badges[studentId] || []
-      if (!this.badges[studentId].some((b: any) => b.id === badge.id)) {
-        this.badges[studentId].push(badge)
-        this.badges = { ...this.badges }
-        localStorage.setItem('pf:badges', JSON.stringify(this.badges))
-      }
-    },
-
-    getBadges(studentId: string) {
-      return this.badges[studentId] || []
-    },
-
-    checkCourseCompletion(studentId: string, courseId: string | number) {
-      const course = this.getCourse(courseId)
-      if (!course) return false
-      const p = this.getProgress(studentId, courseId)
-      const allDone = course.sessions.every((s: any) => p[s.id]?.done)
-      if (!allDone) return false
-      const badgeId = `course-complete-${courseId}`
-      const existing = (this.badges[studentId] || []).some((b: any) => b.id === badgeId)
-      if (!existing) {
-        this.awardBadge(studentId, { id: badgeId, title: `Cours complété — ${course.title}`, courseId })
-        this.awardPoints(studentId, 50)
-      }
-      return true
+    async deleteChoice(id: string | number) {
+      return api.delete(`/api/choices/${id}`)
     },
   },
 })

@@ -5,6 +5,7 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
 import { useCoursesStore } from './stores/courses'
+import { useGamificationStore } from './stores/gamification'
 import { createPinia } from 'pinia'
 
 const app = createApp(App)
@@ -24,7 +25,12 @@ async function bootstrap() {
     courses.fetchCourses().catch((e) => console.error('Échec du chargement des cours', e)),
   ]
   if (auth.token) {
-    tasks.push(auth.fetchMe().catch(() => auth.logout()))
+    tasks.push(
+      auth
+        .fetchMe()
+        .then(() => useGamificationStore(pinia).fetchProgress())
+        .catch(() => auth.logout()),
+    )
   }
   await Promise.all(tasks)
 

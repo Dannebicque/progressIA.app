@@ -1,12 +1,22 @@
 import { defineStore } from 'pinia'
 import { api, setToken, getToken } from '../api/client'
 
+export interface Badge {
+  id?: number
+  code: string
+  label: string
+  icon: string
+  description?: string | null
+  awardedAt?: string
+}
+
 export interface AuthUser {
   id: number
   email: string
   name: string
   roles: string[]
   points: number
+  badges: Badge[]
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -42,6 +52,16 @@ export const useAuthStore = defineStore('auth', {
       this.user = user
       localStorage.setItem('pf:user', JSON.stringify(user))
       return user
+    },
+    // Apply rewards returned by the gamification endpoints (points + new badges).
+    applyRewards(totalPoints: number, newBadges: Badge[] = []) {
+      if (!this.user) return
+      this.user.points = totalPoints
+      const existing = new Set((this.user.badges || []).map((b) => b.code))
+      for (const b of newBadges) {
+        if (!existing.has(b.code)) this.user.badges = [...(this.user.badges || []), b]
+      }
+      localStorage.setItem('pf:user', JSON.stringify(this.user))
     },
     logout() {
       this.user = null

@@ -11,15 +11,18 @@
                             <IconSchool class="size-8" />
                         </div>
                         <div>
-                            <h1 class="text-2xl font-bold tracking-tight">{{ course.title }}</h1>
+                            <div class="flex items-center gap-2">
+                                <h1 class="text-2xl font-bold tracking-tight">{{ course.title }}</h1>
+                                <Badge v-if="course.category && course.category !== 'other'" variant="secondary" class="uppercase">{{ course.category }}</Badge>
+                            </div>
                             <p class="text-sm text-muted-foreground">{{ course.theme }}<span v-if="course.context"> · {{ course.context }}</span></p>
                             <p class="mt-2 max-w-2xl text-sm">{{ course.scenario }}</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-auto">
                         <Stat label="Séances" :value="course.sessions.length" />
-                        <Stat label="Durée" :value="`${course.sessions.length * 30} min`" />
-                        <Stat label="Points" :value="course.sessions.length * 20" />
+                        <Stat label="Pages" :value="totalPages" />
+                        <Stat label="Pts à gagner" :value="totalPoints" />
                         <Stat label="Progression" :value="`${pct}%`" :accent="accent" />
                     </div>
                 </CardContent>
@@ -35,7 +38,7 @@
                                 <div class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-sm font-semibold text-accent-foreground">{{ Number(i) + 1 }}</div>
                                 <div>
                                     <div class="font-medium">{{ s.title }}</div>
-                                    <div class="text-sm text-muted-foreground">{{ s.chapters.length }} chapitres</div>
+                                    <div class="text-sm text-muted-foreground">{{ chapterCount(s) }} chapitres · {{ pageCount(s) }} pages</div>
                                 </div>
                             </div>
                             <RouterLink :to="`/course/${course.id}/session/${s.id}`">
@@ -52,18 +55,16 @@
                 <aside class="space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle class="text-base">Progression</CardTitle>
-                            <CardDescription>{{ completed }} / {{ course.sessions.length }} séances validées</CardDescription>
+                            <CardTitle class="text-base">Ma progression</CardTitle>
+                            <CardDescription>{{ donePages }} / {{ totalPages }} pages terminées</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <Progress :model-value="pct" />
-                        </CardContent>
+                        <CardContent><Progress :model-value="pct" /></CardContent>
                     </Card>
                     <Card>
-                        <CardHeader><CardTitle class="text-base">Badges</CardTitle></CardHeader>
+                        <CardHeader><CardTitle class="text-base">Mes badges</CardTitle></CardHeader>
                         <CardContent class="flex flex-wrap gap-2">
-                            <Badge v-for="b in badges" :key="b.id" variant="secondary" class="gap-1">
-                                <IconAward class="size-3.5 text-amber-500" />{{ b.title }}
+                            <Badge v-for="b in badges" :key="b.code" variant="secondary" class="gap-1">
+                                <span>{{ b.icon }}</span>{{ b.label }}
                             </Badge>
                             <p v-if="!badges.length" class="text-sm text-muted-foreground">Aucun badge pour le moment.</p>
                         </CardContent>
@@ -79,10 +80,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { IconSchool, IconArrowRight, IconAward } from '@tabler/icons-vue'
+import { IconSchool, IconArrowRight } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import Stat from '@/components/StatPill.vue'
 import { useCoursesStore } from '@/stores/courses'
+import { useGamificationStore } from '@/stores/gamification'
+import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -90,18 +93,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const route = useRoute()
 const store = useCoursesStore()
-const studentId = 'student1'
+const gam = useGamificationStore()
+const auth = useAuthStore()
+
 const course = computed(() => store.getCourse(route.params.id as string))
 const accent = computed(() => course.value?.accentColor || '#7c3aed')
+const badges = computed(() => auth.user?.badges || [])
 
-const completed = computed(() => {
+function chapterCount(s: any) { return s.chapters?.length || 0 }
+function pageCount(s: any) { return (s.chapters || []).reduce((a: number, ch: any) => a + (ch.pages?.length || 0), 0) }
+
+const totalPages = computed(() => (course.value ? gam.coursePageIds(course.value).length : 0))
+const donePages = computed(() => (course.value ? gam.coursePageIds(course.value).filter((id) => gam.isPageDone(id)).length : 0))
+const pct = computed(() => (course.value ? gam.coursePct(course.value) : 0))
+const totalPoints = computed(() => {
     if (!course.value) return 0
-    const p = store.getProgress(studentId, course.value.id)
-    return course.value.sessions.filter((s: any) => p[s.id]?.done).length
+    let pts = 0
+    for (const s of course.value.sessions || [])
+        for (const ch of s.chapters || []) {
+            for (const p of ch.pages || []) pts += p.points || 0
+            for (const ev of ch.evaluations || []) pts += ev.pointsReward || 0
+        }
+    return pts
 })
-const pct = computed(() => {
-    if (!course.value || !course.value.sessions.length) return 0
-    return Math.round((completed.value / course.value.sessions.length) * 100)
-})
-const badges = computed(() => store.getBadges(studentId))
 </script>

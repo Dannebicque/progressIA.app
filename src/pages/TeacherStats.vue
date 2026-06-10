@@ -3,25 +3,23 @@
         <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight">Statistiques — Enseignant</h1>
-                <p class="text-sm text-muted-foreground">Vue d'ensemble de vos cours et de l'activité des étudiants.</p>
+                <p class="text-sm text-muted-foreground">Vue d'ensemble du contenu pédagogique.</p>
             </div>
             <RouterLink to="/backoffice"><Button variant="outline" size="sm"><IconPencil class="size-4" /> Éditer les cours</Button></RouterLink>
         </div>
 
-        <!-- KPI -->
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatCard :icon="IconBook" label="Cours" :value="totalCourses" tint="indigo" />
-            <StatCard :icon="IconLayoutList" label="Séances" :value="totalSessions" tint="violet" />
-            <StatCard :icon="IconFileText" label="Chapitres" :value="totalChapters" tint="sky" />
-            <StatCard :icon="IconUsers" label="Étudiants actifs" :value="activeStudents" tint="emerald" />
-            <StatCard :icon="IconStar" label="Points distribués" :value="pointsDistributed" tint="amber" />
+            <StatCard :icon="IconBook" label="Cours" :value="totals.courses" tint="indigo" />
+            <StatCard :icon="IconLayoutList" label="Séances" :value="totals.sessions" tint="violet" />
+            <StatCard :icon="IconFileText" label="Pages" :value="totals.pages" tint="sky" />
+            <StatCard :icon="IconClipboardCheck" label="Évaluations" :value="totals.evaluations" tint="emerald" />
+            <StatCard :icon="IconHelpCircle" label="Questions" :value="totals.questions" tint="amber" />
         </div>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-2">
-            <!-- sessions per course (bar chart) -->
             <Card>
                 <CardHeader>
-                    <CardTitle>Séances par cours</CardTitle>
+                    <CardTitle>Pages par cours</CardTitle>
                     <CardDescription>Volume de contenu par formation.</CardDescription>
                 </CardHeader>
                 <CardContent class="space-y-3">
@@ -29,30 +27,29 @@
                         <div class="w-40 shrink-0 truncate text-sm" :title="c.title">{{ c.title }}</div>
                         <div class="h-6 flex-1 rounded-md bg-muted">
                             <div class="grid h-6 place-items-end rounded-md bg-brand-gradient pr-2 text-xs font-medium text-white"
-                                :style="{ width: barWidth(c.sessions.length) }">
-                                {{ c.sessions.length }}
-                            </div>
+                                :style="{ width: barWidth(pagesOf(c)) }">{{ pagesOf(c) }}</div>
                         </div>
                     </div>
                     <p v-if="!courses.length" class="text-sm text-muted-foreground">Aucun cours.</p>
                 </CardContent>
             </Card>
 
-            <!-- completion per course -->
             <Card>
                 <CardHeader>
-                    <CardTitle>Complétion moyenne</CardTitle>
-                    <CardDescription>Progression moyenne des étudiants par cours.</CardDescription>
+                    <CardTitle>Détail par cours</CardTitle>
+                    <CardDescription>Catégorie, séances, évaluations, points à gagner.</CardDescription>
                 </CardHeader>
-                <CardContent class="space-y-5">
-                    <div v-for="c in courses" :key="c.id">
-                        <div class="mb-1.5 flex items-center justify-between text-sm">
-                            <span class="font-medium">{{ c.title }}</span>
-                            <span class="text-muted-foreground">{{ studentsOf(c).length }} étudiant(s) · {{ avgCompletion(c) }}%</span>
+                <CardContent class="space-y-3">
+                    <div v-for="c in courses" :key="c.id" class="flex items-center justify-between gap-3 border-b pb-2 last:border-0">
+                        <div class="min-w-0">
+                            <div class="truncate text-sm font-medium">{{ c.title }}</div>
+                            <div class="text-xs text-muted-foreground">{{ c.sessions.length }} séances · {{ evalsOf(c) }} évals</div>
                         </div>
-                        <Progress :model-value="avgCompletion(c)" />
+                        <div class="flex items-center gap-2">
+                            <Badge v-if="c.category && c.category !== 'other'" variant="secondary" class="uppercase">{{ c.category }}</Badge>
+                            <Badge variant="outline">{{ pointsOf(c) }} pts</Badge>
+                        </div>
                     </div>
-                    <p v-if="!courses.length" class="text-sm text-muted-foreground">Aucun cours.</p>
                 </CardContent>
             </Card>
         </div>
@@ -61,39 +58,37 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { IconBook, IconLayoutList, IconFileText, IconUsers, IconStar, IconPencil } from '@tabler/icons-vue'
+import { IconBook, IconLayoutList, IconFileText, IconClipboardCheck, IconHelpCircle, IconPencil } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useCoursesStore } from '@/stores/courses'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const store = useCoursesStore()
 const courses = computed(() => store.courses)
 
-const totalCourses = computed(() => courses.value.length)
-const totalSessions = computed(() => courses.value.reduce((a, c) => a + c.sessions.length, 0))
-const totalChapters = computed(() => courses.value.reduce((a, c) => a + c.sessions.reduce((b: number, s: any) => b + (s.chapters?.length || 0), 0), 0))
-const activeStudents = computed(() => Object.keys(store.progress || {}).length)
-const pointsDistributed = computed(() => Object.values(store.points || {}).reduce((a: number, b: any) => a + (b || 0), 0))
-
-const maxSessions = computed(() => Math.max(1, ...courses.value.map((c) => c.sessions.length)))
-function barWidth(n: number) {
-    return `${Math.max(8, Math.round((n / maxSessions.value) * 100))}%`
+function pagesOf(c: any) { return (c.sessions || []).reduce((a: number, s: any) => a + (s.chapters || []).reduce((b: number, ch: any) => b + (ch.pages?.length || 0), 0), 0) }
+function evalsOf(c: any) { return (c.sessions || []).reduce((a: number, s: any) => a + (s.chapters || []).reduce((b: number, ch: any) => b + (ch.evaluations?.length || 0), 0), 0) }
+function questionsOf(c: any) { return (c.sessions || []).reduce((a: number, s: any) => a + (s.chapters || []).reduce((b: number, ch: any) => b + (ch.evaluations || []).reduce((q: number, ev: any) => q + (ev.questions?.length || 0), 0), 0), 0) }
+function pointsOf(c: any) {
+    let pts = 0
+    for (const s of c.sessions || []) for (const ch of s.chapters || []) {
+        for (const p of ch.pages || []) pts += p.points || 0
+        for (const ev of ch.evaluations || []) pts += ev.pointsReward || 0
+    }
+    return pts
 }
 
-function studentsOf(c: any) {
-    return store.getStudentsForCourse(c.id)
-}
-function avgCompletion(c: any) {
-    const students = studentsOf(c)
-    if (!students.length || !c.sessions.length) return 0
-    const sum = students.reduce((acc, sid) => {
-        const p = store.getProgress(sid, c.id)
-        const done = c.sessions.filter((s: any) => p[s.id]?.done).length
-        return acc + done / c.sessions.length
-    }, 0)
-    return Math.round((sum / students.length) * 100)
-}
+const totals = computed(() => ({
+    courses: courses.value.length,
+    sessions: courses.value.reduce((a, c) => a + c.sessions.length, 0),
+    pages: courses.value.reduce((a, c) => a + pagesOf(c), 0),
+    evaluations: courses.value.reduce((a, c) => a + evalsOf(c), 0),
+    questions: courses.value.reduce((a, c) => a + questionsOf(c), 0),
+}))
+
+const maxPages = computed(() => Math.max(1, ...courses.value.map((c) => pagesOf(c))))
+function barWidth(n: number) { return `${Math.max(8, Math.round((n / maxPages.value) * 100))}%` }
 </script>
