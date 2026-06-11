@@ -1,238 +1,184 @@
 import { defineStore } from 'pinia'
-import mock from '../data/mock-courses.json'
+import { api } from '../api/client'
+
+// Course → Session → Chapter → { Page | Evaluation → Question → Choice }
+// Backed by the Symfony API. Write operations hit the API then refetch the tree
+// so the local state always mirrors the server (simple and robust for a CRUD UI).
 
 export const useCoursesStore = defineStore('courses', {
   state: () => ({
-    courses: JSON.parse(localStorage.getItem('pf:courses') || 'null') || mock.courses as any[],
-    // store progress per student in localStorage keyed by 'pf:progress'
-    progress: JSON.parse(localStorage.getItem('pf:progress') || '{}') as Record<string, any>,
-    points: JSON.parse(localStorage.getItem('pf:points') || '{}') as Record<string, number>,
-    badges: JSON.parse(localStorage.getItem('pf:badges') || '{}') as Record<string, any[]>,
+    courses: [] as any[],
+    loaded: false,
   }),
   actions: {
-    // seed demo data for a sample student if storage is empty
-    seedDemo(studentId = 'student1') {
-      if (!localStorage.getItem('pf:progress')) {
-        const now = Date.now()
-        const demoProgress: Record<string, any> = {}
-        demoProgress[studentId] = {}
-        for (const c of this.courses) {
-          demoProgress[studentId][c.id] = {}
-          for (const s of c.sessions) {
-            // default states: mark first session as done for some courses,
-            // mark second session as in-progress for php example
-            if (c.id === 'php-oop-example' && s.id === 's1') {
-              demoProgress[studentId][c.id][s.id] = { done: true, at: now - 86400000 }
-            } else if (c.id === 'php-oop-example' && s.id === 's2') {
-              demoProgress[studentId][c.id][s.id] = { inProgress: true, at: now - 3600000 }
-            } else if (c.id === 'c1' && s.id === 's1') {
-              demoProgress[studentId][c.id][s.id] = { done: true, at: now - 172800000 }
-            } else if (c.id === 'c2' && s.id === 's1') {
-              demoProgress[studentId][c.id][s.id] = { inProgress: true, at: now - 7200000 }
-            } else {
-              demoProgress[studentId][c.id][s.id] = { done: false }
-            }
-          }
-        }
-        this.progress = demoProgress
-        localStorage.setItem('pf:progress', JSON.stringify(this.progress))
-      }
+    async fetchCourses() {
+      const data = await api.get<any[]>('/api/courses', { anonymous: true })
+      this.courses.splice(0, this.courses.length, ...data)
+      this.loaded = true
+      return this.courses
+    },
 
-      if (!localStorage.getItem('pf:points')) {
-        this.points = { [studentId]: 120 }
-        localStorage.setItem('pf:points', JSON.stringify(this.points))
+    // ---- tree lookups ----
+    getCourse(id: string | number) {
+      return this.courses.find((c) => String(c.id) === String(id))
+    },
+    findSession(id: string | number): any {
+      for (const c of this.courses) {
+        const s = c.sessions?.find((s: any) => String(s.id) === String(id))
+        if (s) return s
       }
+      return null
+    },
+    findChapter(id: string | number): any {
+      for (const c of this.courses)
+        for (const s of c.sessions || []) {
+          const ch = s.chapters?.find((ch: any) => String(ch.id) === String(id))
+          if (ch) return ch
+        }
+      return null
+    },
 
-      if (!localStorage.getItem('pf:badges')) {
-        this.badges = {
-          [studentId]: [
-            { id: 'php-s1', title: 'Classes maîtrisées', courseId: 'php-oop-example' },
-            { id: 'engaged', title: 'Participation active' }
-          ]
-        }
-        localStorage.setItem('pf:badges', JSON.stringify(this.badges))
-      }
+    // ---- Course ----
+    async createCourse(payload: any) {
+      const { id: _i, sessions: _s, ...body } = payload
+      const course = await api.post<any>('/api/courses', { sessions: [], ...body })
+      await this.fetchCourses()
+      return this.getCourse(course.id) ?? course
     },
-    // persist courses to localStorage
-    saveCourses() {
-      try {
-        localStorage.setItem('pf:courses', JSON.stringify(this.courses))
-      } catch (e) {}
+    async updateCourse(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/courses/${id}`, patch)
+      await this.fetchCourses()
+      return this.getCourse(id) ?? r
     },
-    createCourse(payload: any) {
-      const id = payload.id || `c${Date.now()}`
-      const course = { id, sessions: [], ...payload }
-      this.courses.push(course)
-      this.courses = [...this.courses]
-      this.saveCourses()
-      return course
+    async deleteCourse(id: string | number) {
+      await api.delete(`/api/courses/${id}`)
+      await this.fetchCourses()
     },
-    updateCourse(id: string, patch: any) {
-      const idx = this.courses.findIndex((c) => c.id === id)
-      if (idx === -1) return null
-      this.courses[idx] = { ...this.courses[idx], ...patch }
-      this.courses = [...this.courses]
-      this.saveCourses()
-      return this.courses[idx]
+
+    // ---- Session ----
+    async addSession(courseId: string | number, session: any = {}) {
+      const course = this.getCourse(courseId)
+      const r = await api.post<any>('/api/sessions', {
+        title: session.title || 'Nouvelle séance',
+        pitch: session.pitch ?? null,
+        renderConfig: session.renderConfig || { allowUpload: true, allowedTypes: ['file', 'image'], maxFiles: 1 },
+        position: course?.sessions?.length ?? 0,
+        course: `/api/courses/${courseId}`,
+      })
+      await this.fetchCourses()
+      return this.findSession(r.id) ?? r
     },
-    deleteCourse(id: string) {
-      this.courses = this.courses.filter((c) => c.id !== id)
-      this.saveCourses()
+    async updateSession(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/sessions/${id}`, patch)
+      await this.fetchCourses()
+      return this.findSession(id) ?? r
     },
-    addSession(courseId: string, session: any) {
-      const c = this.getCourse(courseId)
-      if (!c) return null
-      const defaultRender = { allowUpload: true, allowedTypes: ['file', 'image'], maxFiles: 1 }
-      const s = { id: session.id || `s${Date.now()}`, chapters: session.chapters || [], title: session.title || 'Nouvelle séance', renderConfig: { ...(defaultRender), ...(session.renderConfig || {}) } }
-      c.sessions.push(s)
-      this.courses = [...this.courses]
-      this.saveCourses()
-      return s
+    async deleteSession(id: string | number) {
+      await api.delete(`/api/sessions/${id}`)
+      await this.fetchCourses()
     },
-    updateSession(courseId: string, sessionId: string, patch: any) {
-      const c = this.getCourse(courseId)
-      if (!c) return null
-      const idx = c.sessions.findIndex((ss: any) => ss.id === sessionId)
-      if (idx === -1) return null
-      c.sessions[idx] = { ...c.sessions[idx], ...patch }
-      this.courses = [...this.courses]
-      this.saveCourses()
-      return c.sessions[idx]
+
+    // ---- Chapter ----
+    async addChapter(sessionId: string | number, chapter: any = {}) {
+      const session = this.findSession(sessionId)
+      const r = await api.post<any>('/api/chapters', {
+        title: chapter.title || 'Nouveau chapitre',
+        position: session?.chapters?.length ?? 0,
+        session: `/api/sessions/${sessionId}`,
+      })
+      await this.fetchCourses()
+      return this.findChapter(r.id) ?? r
     },
-    deleteSession(courseId: string, sessionId: string) {
-      const c = this.getCourse(courseId)
-      if (!c) return
-      c.sessions = c.sessions.filter((s: any) => s.id !== sessionId)
-      this.courses = [...this.courses]
-      this.saveCourses()
+    async updateChapter(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/chapters/${id}`, patch)
+      await this.fetchCourses()
+      return this.findChapter(id) ?? r
     },
-    addChapter(courseId: string, sessionId: string, chapter: any) {
-      const s = this.getCourse(courseId)?.sessions.find((ss: any) => ss.id === sessionId)
-      if (!s) return null
-      const ch = { id: chapter.id || `ch${Date.now()}`, title: chapter.title || 'Nouveau chapitre', content: chapter.content || '' }
-      s.chapters.push(ch)
-      this.courses = [...this.courses]
-      this.saveCourses()
-      return ch
+    async deleteChapter(id: string | number) {
+      await api.delete(`/api/chapters/${id}`)
+      await this.fetchCourses()
     },
-    updateChapter(courseId: string, sessionId: string, chapterId: string, patch: any) {
-      const s = this.getCourse(courseId)?.sessions.find((ss: any) => ss.id === sessionId)
-      if (!s) return null
-      const idx = s.chapters.findIndex((ch: any) => ch.id === chapterId)
-      if (idx === -1) return null
-      s.chapters[idx] = { ...s.chapters[idx], ...patch }
-      this.courses = [...this.courses]
-      this.saveCourses()
-      return s.chapters[idx]
+
+    // ---- Page ----
+    async addPage(chapterId: string | number, page: any = {}) {
+      const chapter = this.findChapter(chapterId)
+      const r = await api.post<any>('/api/pages', {
+        title: page.title || 'Nouvelle page',
+        content: page.content || '# Titre',
+        points: page.points ?? 5,
+        position: chapter?.pages?.length ?? 0,
+        chapter: `/api/chapters/${chapterId}`,
+      })
+      await this.fetchCourses()
+      return r
     },
-    deleteChapter(courseId: string, sessionId: string, chapterId: string) {
-      const s = this.getCourse(courseId)?.sessions.find((ss: any) => ss.id === sessionId)
-      if (!s) return
-      s.chapters = s.chapters.filter((ch: any) => ch.id !== chapterId)
-      this.courses = [...this.courses]
-      this.saveCourses()
+    async updatePage(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/pages/${id}`, patch)
+      await this.fetchCourses()
+      return r
     },
-    // list students who have any progress recorded
-    getStudentsForCourse(courseId: string) {
-      const out: string[] = []
-      const all = JSON.parse(localStorage.getItem('pf:progress') || '{}') as Record<string, any>
-      for (const sid of Object.keys(all)) {
-        if (all[sid] && all[sid][courseId]) out.push(sid)
-      }
-      return out
+    async deletePage(id: string | number) {
+      await api.delete(`/api/pages/${id}`)
+      await this.fetchCourses()
     },
-    // scan localStorage for uploads for a given course/session (key pattern pf:upload:courseId:sessionId:studentId)
-    getUploadsForSession(courseId: string, sessionId: string) {
-      const uploads: Record<string, any[]> = {}
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i) || ''
-          if (k.startsWith(`pf:upload:${courseId}:${sessionId}:`)) {
-            const student = k.split(':').pop() || ''
-            const v = localStorage.getItem(k)
-            try {
-              uploads[student] = JSON.parse(v || 'null') || [v]
-            } catch (e) {
-              uploads[student] = [v]
-            }
-          }
-        }
-      } catch (e) {}
-      return uploads
+
+    // ---- Evaluation (authoring) ----
+    // Teacher-only read that includes the correct answers.
+    async fetchEvaluationAdmin(id: string | number) {
+      return api.get<any>(`/api/evaluations/${id}`)
     },
-    // evaluations stored under pf:evaluations as mapping student->course->session -> evaluation
-    saveEvaluation(studentId: string, courseId: string, sessionId: string, evalObj: any) {
-      const key = 'pf:evaluations'
-      const all = JSON.parse(localStorage.getItem(key) || '{}') as Record<string, any>
-      all[studentId] = all[studentId] || {}
-      all[studentId][courseId] = all[studentId][courseId] || {}
-      all[studentId][courseId][sessionId] = { ...evalObj, at: Date.now() }
-      localStorage.setItem(key, JSON.stringify(all))
+    async addEvaluation(chapterId: string | number, evaluation: any = {}) {
+      const chapter = this.findChapter(chapterId)
+      const r = await api.post<any>('/api/evaluations', {
+        title: evaluation.title || 'Nouvelle évaluation',
+        description: evaluation.description ?? null,
+        pointsReward: evaluation.pointsReward ?? 20,
+        position: (chapter?.evaluations?.length ?? 0),
+        chapter: `/api/chapters/${chapterId}`,
+      })
+      await this.fetchCourses()
+      return r
     },
-    getEvaluations(studentId: string, courseId: string) {
-      const key = 'pf:evaluations'
-      const all = JSON.parse(localStorage.getItem(key) || '{}') as Record<string, any>
-      return (all[studentId] && all[studentId][courseId]) || {}
+    async updateEvaluation(id: string | number, patch: any) {
+      const r = await api.patch<any>(`/api/evaluations/${id}`, patch)
+      await this.fetchCourses()
+      return r
     },
-    getCourse(id: string) {
-      return this.courses.find((c) => c.id === id)
+    async deleteEvaluation(id: string | number) {
+      await api.delete(`/api/evaluations/${id}`)
+      await this.fetchCourses()
     },
-    saveProgress(studentId: string, courseId: string, sessionId: string, value: any) {
-      this.progress[studentId] = this.progress[studentId] || {}
-      this.progress[studentId][courseId] = this.progress[studentId][courseId] || {}
-      this.progress[studentId][courseId][sessionId] = value
-      localStorage.setItem('pf:progress', JSON.stringify(this.progress))
-      // if this session is marked done, check course completion
-      try {
-        if (value && value.done) this.checkCourseCompletion(studentId, courseId)
-      } catch (e) {
-        /* ignore */
-      }
+
+    // ---- Question / Choice ----
+    async addQuestion(evaluationId: string | number, question: any = {}) {
+      return api.post<any>('/api/questions', {
+        type: question.type || 'qcm',
+        statement: question.statement || 'Nouvelle question',
+        points: question.points ?? 1,
+        multiple: question.multiple ?? false,
+        position: question.position ?? 0,
+        evaluation: `/api/evaluations/${evaluationId}`,
+      })
     },
-    getProgress(studentId: string, courseId: string) {
-      return this.progress[studentId]?.[courseId] || {}
-    }
-    ,
-    // Points & badges (simple prototype)
-    awardPoints(studentId: string, pts: number) {
-      this.points[studentId] = (this.points[studentId] || 0) + pts
-      // force state replacement to ensure reactivity in nested objects
-      this.points = { ...this.points }
-      localStorage.setItem('pf:points', JSON.stringify(this.points))
+    async updateQuestion(id: string | number, patch: any) {
+      return api.patch<any>(`/api/questions/${id}`, patch)
     },
-    getPoints(studentId: string) {
-      return this.points[studentId] || 0
+    async deleteQuestion(id: string | number) {
+      return api.delete(`/api/questions/${id}`)
     },
-    awardBadge(studentId: string, badge: any) {
-      this.badges[studentId] = this.badges[studentId] || []
-      // avoid duplicates by id if provided
-      if (!this.badges[studentId].some((b: any) => b.id === badge.id)) {
-        this.badges[studentId].push(badge)
-        // force replacement for reactivity
-        this.badges = { ...this.badges }
-        localStorage.setItem('pf:badges', JSON.stringify(this.badges))
-      }
+    async addChoice(questionId: string | number, choice: any = {}) {
+      return api.post<any>('/api/choices', {
+        text: choice.text || 'Réponse',
+        correct: choice.correct ?? false,
+        position: choice.position ?? 0,
+        question: `/api/questions/${questionId}`,
+      })
     },
-    getBadges(studentId: string) {
-      return this.badges[studentId] || []
-    }
-    ,
-    checkCourseCompletion(studentId: string, courseId: string) {
-      const course = this.courses.find((c) => c.id === courseId)
-      if (!course) return false
-      const p = this.getProgress(studentId, courseId)
-      // all sessions must be done
-      const allDone = course.sessions.every((s: any) => p[s.id]?.done)
-      if (!allDone) return false
-      const badgeId = `course-complete-${courseId}`
-      // award badge if not already present
-      const existing = (this.badges[studentId] || []).some((b: any) => b.id === badgeId)
-      if (!existing) {
-        this.awardBadge(studentId, { id: badgeId, title: `Cours complété — ${course.title}`, courseId })
-        // award bonus points
-        this.awardPoints(studentId, 50)
-      }
-      return true
-    }
-  }
+    async updateChoice(id: string | number, patch: any) {
+      return api.patch<any>(`/api/choices/${id}`, patch)
+    },
+    async deleteChoice(id: string | number) {
+      return api.delete(`/api/choices/${id}`)
+    },
+  },
 })

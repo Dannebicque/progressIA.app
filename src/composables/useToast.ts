@@ -1,17 +1,20 @@
-import { reactive } from 'vue'
+import { toast } from 'vue-sonner'
 
-export const toasts = reactive<Array<{ id: number; msg: string; type?: string }>>([])
+type ToastType = 'success' | 'error' | 'info' | 'warning' | string
 
-export function showToast(msg: string, type = 'success', duration = 3000) {
-  const id = Date.now() + Math.floor(Math.random() * 1000)
-  toasts.push({ id, msg, type })
-  setTimeout(() => {
-    const idx = toasts.findIndex((t) => t.id === id)
-    if (idx > -1) toasts.splice(idx, 1)
-  }, duration)
-}
-
-export function removeToast(id: number) {
-  const idx = toasts.findIndex((t) => t.id === id)
-  if (idx > -1) toasts.splice(idx, 1)
+// Backwards-compatible wrapper over vue-sonner so existing showToast() calls keep working.
+export function showToast(msg: string, type: ToastType = 'success', duration = 3000) {
+  const opts = { duration }
+  switch (type) {
+    case 'error':
+      return toast.error(msg, opts)
+    case 'info':
+      return toast.info(msg, opts)
+    case 'warning':
+      return toast.warning(msg, opts)
+    case 'success':
+      return toast.success(msg, opts)
+    default:
+      return toast(msg, opts)
+  }
 }

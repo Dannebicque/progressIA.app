@@ -62,5 +62,38 @@ npm install
 npm run dev
 ```
 
-Les modifications d'édition dans le back-office sont stockées localement dans `localStorage` (prototype). Les uploads sont conservés en base64 dans `localStorage`.
+## Backend (API Symfony)
+
+Le front est désormais connecté à une **API découplée** Symfony 8 + API Platform, avec authentification **JWT**. Le code vit dans [backend/](backend/) (monorepo).
+
+Stack : Symfony 8.1, API Platform, Doctrine ORM, MariaDB (Docker), LexikJWTAuthenticationBundle, Nelmio CORS.
+
+### Lancer le backend
+
+```sh
+cd backend
+docker compose up -d                              # MariaDB (port hôte 3309)
+php bin/console doctrine:migrations:migrate -n    # schéma
+php bin/console doctrine:fixtures:load -n         # données de démo
+symfony server:start -d --no-tls                  # API sur http://127.0.0.1:8000
+```
+
+Comptes de démonstration (créés par les fixtures) :
+
+- Enseignant — `teacher@pedagoflow.test` / `teacher`
+- Étudiant — `student@pedagoflow.test` / `student`
+
+### Endpoints principaux
+
+- `POST /api/login` → renvoie un token JWT
+- `GET /api/me` → profil de l'utilisateur authentifié
+- `GET /api/courses` (public) → catalogue imbriqué (cours → séances → chapitres)
+- `POST|PATCH|DELETE /api/courses|sessions|chapters` → CRUD (réservé `ROLE_TEACHER`)
+- Docs interactives : http://127.0.0.1:8000/api
+
+### Connexion front ↔ back
+
+Le front lit l'URL de l'API dans [.env](.env) (`VITE_API_URL`). La couche d'appel est dans [src/api/client.ts](src/api/client.ts) (fetch + Bearer JWT). Les stores [auth](src/stores/auth.ts) et [courses](src/stores/courses.ts) consomment l'API.
+
+> **État de la migration** : l'arbre cours/séances/chapitres et l'authentification passent par l'API. La **gamification** (progression, points, badges, uploads, évaluations) est encore en `localStorage` — prévue en phase 2 (entités `Progress`/`Badge`/`Evaluation`/`Upload` côté API).
 

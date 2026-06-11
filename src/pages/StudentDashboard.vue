@@ -1,143 +1,66 @@
 <template>
     <AppLayout>
-        <div class="flex items-center justify-between">
+        <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
-                <h2 class="text-2xl font-bold">Tableau de bord — Étudiant</h2>
-                <p class="mt-2 text-sm text-gray-600">Suivi de progression et rendus.</p>
+                <h1 class="text-2xl font-bold tracking-tight">Tableau de bord</h1>
+                <p class="text-sm text-muted-foreground">Suivi de votre progression.</p>
             </div>
-            <div class="text-right">
-                <div class="text-sm text-gray-500">Points</div>
-                <div class="text-2xl font-bold text-indigo-600">{{ points }}</div>
-            </div>
+            <RouterLink to="/stats/student"><Button variant="outline" size="sm"><IconChartBar class="size-4" /> Mes statistiques</Button></RouterLink>
         </div>
 
-        <div class="mt-6 grid md:grid-cols-2 gap-6">
-            <div>
-                <h3 class="font-semibold mb-3">Mes cours</h3>
-                <div v-for="c in courses" :key="c.id" class="bg-white p-4 rounded shadow mb-4">
-                    <div class="flex justify-between items-start gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <div class="font-semibold">{{ c.title }}</div>
-                                    <div class="text-sm text-gray-600">{{ c.theme }} · {{ c.level }}</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="text-sm text-gray-500">Progression</div>
-                                    <div class="text-lg font-semibold" :style="{ color: c.accentColor }">{{
-                                        getCoursePct(c) }}%</div>
-                                </div>
+        <div class="grid gap-6 lg:grid-cols-3">
+            <div class="space-y-4 lg:col-span-2">
+                <h2 class="text-lg font-semibold tracking-tight">Mes cours</h2>
+                <Card v-for="c in courses" :key="c.id">
+                    <CardContent class="py-5">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-center gap-2">
+                                <div class="font-semibold">{{ c.title }}</div>
+                                <Badge v-if="c.category && c.category !== 'other'" variant="secondary" class="uppercase">{{ c.category }}</Badge>
                             </div>
-
-                            <div class="mt-3 flex items-center gap-3">
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div :style="{ width: getCoursePct(c) + '%', backgroundColor: c.accentColor }"
-                                        class="h-2 rounded-full"></div>
-                                </div>
-                                <div class="text-sm text-gray-500">{{ getCompletedCount(c) }} / {{ c.sessions.length }}
-                                </div>
-                            </div>
-
-                            <div class="mt-3 text-sm text-gray-700">
-                                <div class="font-medium">Séances</div>
-                                <ul class="mt-2 space-y-1">
-                                    <li v-for="s in c.sessions" :key="s.id" class="flex items-center justify-between">
-                                        <div class="flex items-center gap-3">
-                                            <span :class="statusClass(c, s)"
-                                                class="inline-flex items-center px-2 py-1 text-xs rounded">{{
-                                                statusLabel(c,s) }}</span>
-                                            <router-link :to="`/course/${c.id}/session/${s.id}`" class="text-sm">{{
-                                                s.title }}</router-link>
-                                        </div>
-                                        <div class="text-xs text-gray-400">{{ lastActivityFor(c, s) }}</div>
-                                    </li>
-                                </ul>
-                            </div>
+                            <RouterLink :to="`/course/${c.id}`"><Button size="sm" variant="outline">Ouvrir</Button></RouterLink>
                         </div>
-
-                        <div class="flex-shrink-0 flex flex-col gap-2">
-                            <router-link :to="`/course/${c.id}`" class="px-3 py-2 text-sm rounded"
-                                :style="{ backgroundColor: c.accentColor, color: 'white' }">Ouvrir</router-link>
-                            <div class="text-sm text-gray-500">Points: <span class="font-semibold">{{ points }}</span>
-                            </div>
+                        <div class="mt-4 flex items-center gap-3">
+                            <Progress :model-value="gam.coursePct(c)" class="flex-1" />
+                            <span class="shrink-0 text-sm text-muted-foreground">{{ gam.coursePct(c) }}%</span>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
+                <Card v-if="!courses.length" class="grid place-items-center py-12 text-center text-muted-foreground">Aucun cours disponible.</Card>
             </div>
 
-            <aside>
-                <h3 class="font-semibold mb-3">Mes badges</h3>
-                <div class="bg-white rounded p-4 shadow">
-                    <div v-if="badges.length === 0" class="text-sm text-gray-500">Aucun badge pour le moment</div>
-                    <div v-else class="flex gap-2 flex-wrap">
-                        <div v-for="b in badges" :key="b.id"
-                            class="px-3 py-2 bg-indigo-50 text-indigo-700 rounded text-sm">
-                            <div class="font-medium">{{ b.title }}</div>
-                            <div class="text-xs text-gray-500" v-if="b.courseId">{{ b.courseId }}</div>
-                        </div>
-                    </div>
-                </div>
+            <aside class="space-y-6">
+                <StatCard :icon="IconStar" label="Points" :value="points" tint="amber" />
+                <Card>
+                    <CardHeader><CardTitle class="text-base">Mes badges</CardTitle></CardHeader>
+                    <CardContent class="flex flex-wrap gap-2">
+                        <Badge v-for="b in badges" :key="b.code" variant="secondary" class="gap-1"><span>{{ b.icon }}</span>{{ b.label }}</Badge>
+                        <p v-if="!badges.length" class="text-sm text-muted-foreground">Aucun badge pour le moment.</p>
+                    </CardContent>
+                </Card>
             </aside>
         </div>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
-import AppLayout from '../components/AppLayout.vue'
 import { computed } from 'vue'
-import { useCoursesStore } from '../stores/courses'
+import { IconStar, IconChartBar } from '@tabler/icons-vue'
+import AppLayout from '@/components/AppLayout.vue'
+import StatCard from '@/components/StatCard.vue'
+import { useCoursesStore } from '@/stores/courses'
+import { useGamificationStore } from '@/stores/gamification'
+import { useAuthStore } from '@/stores/auth'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const store = useCoursesStore()
-const courses = store.courses
-const studentId = 'student1'
+const gam = useGamificationStore()
+const auth = useAuthStore()
 
-// seed demo data if missing
-store.seedDemo(studentId)
-
-const points = computed(() => store.getPoints(studentId))
-const badges = computed(() => store.getBadges(studentId))
-
-function getCourseProgress(course: any) {
-    return store.getProgress(studentId, course.id)
-}
-
-function getCompletedCount(course: any) {
-    const p = getCourseProgress(course)
-    let cnt = 0
-    for (const s of course.sessions) if (p[s.id]?.done) cnt++
-    return cnt
-}
-
-function getCoursePct(course: any) {
-    if (!course || !course.sessions) return 0
-    return Math.round((getCompletedCount(course) / course.sessions.length) * 100)
-}
-
-function statusLabel(course: any, session: any) {
-    const p = getCourseProgress(course)
-    const s = p[session.id] || {}
-    if (s.done) return 'Validée'
-    if (s.inProgress) return 'En cours'
-    return 'À faire'
-}
-
-function statusClass(course: any, session: any) {
-    const p = getCourseProgress(course)
-    const s = p[session.id] || {}
-    if (s.done) return 'bg-green-100 text-green-700'
-    if (s.inProgress) return 'bg-yellow-100 text-yellow-700'
-    return 'bg-gray-100 text-gray-600'
-}
-
-function lastActivityFor(course: any, session: any) {
-    const p = getCourseProgress(course)
-    const s = p[session.id] || {}
-    if (s.at) {
-        const d = new Date(s.at)
-        return d.toLocaleString()
-    }
-    return ''
-}
+const courses = computed(() => store.courses)
+const points = computed(() => auth.user?.points ?? 0)
+const badges = computed(() => auth.user?.badges || [])
 </script>
-
-<style scoped></style>

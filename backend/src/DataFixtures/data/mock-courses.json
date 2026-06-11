@@ -1,0 +1,127 @@
+{
+  "courses": [
+    {
+      "id": "c1",
+      "title": "Introduction à la pédagogie active",
+      "theme": "Pédagogie",
+      "context": "Formation initiale des enseignants",
+      "accentColor": "#7c3aed",
+      "level": "Intermédiaire",
+      "scenario": "Accompagner les enseignants à concevoir des séances actives",
+      "sessions": [
+        {
+          "id": "s1",
+          "title": "Séance 1 - Motiver les apprenants",
+          "pitch": "Comment susciter l'engagement dès la première séance ?",
+          "chapters": [
+            {
+              "id": "ch1",
+              "title": "Contexte",
+              "content": "# Contexte\nCette séance présente les bases de la motivation en classe."
+            },
+            {
+              "id": "ch2",
+              "title": "Activité",
+              "content": "## Activité\n- Brainstorming\n- Partage en binômes\n\n**Objectif:** Stimuler l'implication."
+            }
+          ],
+          "renderConfig": { "allowUpload": true }
+        },
+        {
+          "id": "s2",
+          "title": "Séance 2 - Conception d'activités",
+          "pitch": "Comment concevoir des activités engageantes ?",
+          "chapters": [
+            {
+              "id": "ch1",
+              "title": "Introduction",
+              "content": "# Introduction\nConcevoir une activité centrée sur l'apprenant."
+            }
+          ],
+          "renderConfig": { "allowUpload": false }
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Scénarios numériques pour la classe",
+      "theme": "Numérique",
+      "context": "Continuité pédagogique",
+      "accentColor": "#06b6d4",
+      "level": "Débutant",
+      "scenario": "Créer des séquences hybridables",
+      "sessions": [
+        {
+          "id": "s1",
+          "title": "Séance 1 - Outils collaboratifs",
+          "chapters": [
+            {
+              "id": "ch1",
+              "title": "Padlet",
+              "content": "# Padlet\nUtiliser Padlet pour recueillir des idées."
+            }
+          ],
+          "renderConfig": { "allowUpload": true }
+        }
+      ]
+    }
+    ,
+    {
+      "id": "php-oop-example",
+      "title": "POO en PHP — Exemple en 2 séances",
+      "theme": "Programmation",
+      "context": "Introduction pratique à la POO en PHP",
+      "accentColor": "#f97316",
+      "level": "Débutant",
+      "scenario": "Exposer les concepts clés de la POO et les appliquer à travers deux séances pratiques",
+      "sessions": [
+        {
+          "id": "s1",
+          "title": "Séance 1 - Classes et objets",
+          "pitch": "Découvrir les concepts de base de la POO : classes, objets, propriétés, méthodes",
+          "chapters": [
+            {
+              "id": "ch1",
+              "title": "Concepts clés",
+              "content": "# Concepts clés\nPrésentation des notions : classe, instance, propriété, méthode, visibilité, instanciation."
+            },
+            {
+              "id": "ch2",
+              "title": "Exemple : créer une classe",
+              "content": "# Exemple : créer une classe\nVoici un exemple simple en PHP :\n\n```php\n<?php\nclass Person {\n  public string $name;\n  public function __construct(string $name) {\n    $this->name = $name;\n  }\n  public function greet(): string {\n    return \"Bonjour \" . $this->name;\n  }\n}\n$jean = new Person(\"Jean\");\necho $jean->greet();\n```"
+            },
+            {
+              "id": "ch3",
+              "title": "Exercices rapides",
+              "content": "# Exercices\n1. Créer une classe `Car` avec `make`, `model`, et une méthode `info()` qui renvoie une description.\n2. Instancier deux objets et afficher leurs informations."
+            }
+          ],
+          "renderConfig": { "allowUpload": true }
+        },
+        {
+          "id": "s2",
+          "title": "Séance 2 - Héritage et encapsulation",
+          "pitch": "Approfondir les concepts d'encapsulation, d'héritage et de polymorphisme",
+          "chapters": [
+            {
+              "id": "ch1",
+              "title": "Encapsulation et visibilité",
+              "content": "# Encapsulation\nExplication des modificateurs `public`, `protected`, `private` et pourquoi protéger l'état d'un objet."
+            },
+            {
+              "id": "ch2",
+              "title": "Héritage et polymorphisme",
+              "content": "# Héritage\nIllustration par l'héritage et la surcharge des méthodes :\n\n```php\n<?php\nclass Employee extends Person {\n  private float $salary;\n  public function __construct(string $name, float $salary) {\n    parent::__construct($name);\n    $this->salary = $salary;\n  }\n  public function getSalary(): float {\n    return $this->salary;\n  }\n}\n```"
+            },
+            {
+              "id": "ch3",
+              "title": "Bonnes pratiques et suite",
+              "content": "# Bonnes pratiques\n- Favoriser des méthodes courtes et lisibles.\n- Utiliser des noms explicites.\n- Préparer la migration vers des frameworks (ex: Symfony) en respectant la séparation des responsabilités."
+            }
+          ],
+          "renderConfig": { "allowUpload": true }
+        }
+      ]
+    }
+  ]
+}
