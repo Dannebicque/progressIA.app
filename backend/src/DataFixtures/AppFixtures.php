@@ -31,6 +31,7 @@ class AppFixtures extends Fixture
         $this->loadUsers($manager);
         $this->loadMockCourses($manager);
         $this->loadDemoCourses($manager);
+        $this->loadBatmanCourse($manager);
 
         $manager->flush();
     }
@@ -181,5 +182,244 @@ class AppFixtures extends Fixture
         $q2 = (new Question())->setType(Question::TYPE_FREE)->setStatement('À quoi sert une prop dans un composant ?')->setPoints(1)->setPosition(1);
         $eval->addQuestion($q2);
         $manager->persist($q2);
+    }
+
+    // ---- Example course: building the BATMAN CORP shop in Symfony, narrated by Alfred ----
+
+    private function loadBatmanCourse(ObjectManager $manager): void
+    {
+        $course = (new Course())
+            ->setTitle('Création de la boutique BATMAN CORP')
+            ->setTheme('Développement Symfony')
+            ->setCategory('back')
+            ->setContext('Projet fil rouge — BUT2 MMI')
+            ->setAccentColor('#f59e0b')
+            ->setLevel('BUT2')
+            ->setScenario("Accompagné par Alfred, le majordome de Wayne Manor, démarrez la boutique en ligne de Batman Corp en Symfony : projet, entité, base de données, catalogue.");
+        $manager->persist($course);
+
+        $session = $this->makeSession($manager, $course, 0, 'Séance 1 — Démarrer la boutique en Symfony', 'Du projet vide au premier catalogue, guidé par Alfred.');
+
+        // Chapitre 1
+        $c1 = $this->makeChapter($manager, $session, 0, 'Le briefing');
+        $this->makePage($manager, $c1, 0, 'Rencontre avec Alfred', <<<'MD'
+# Bienvenue au manoir Wayne
+
+🦇 **Le contexte.** Maître Wayne veut une boutique en ligne pour **Batman Corp**, à développer en **Symfony**. Alfred vous accompagnera tout au long du projet.
+
+## Objectifs de la séance
+- Créer le projet Symfony
+- Découvrir la structure des dossiers
+- Lancer le serveur de développement
+
+## 1. Créer le projet
+```bash
+symfony new batman-corp --webapp
+cd batman-corp
+symfony server:start
+```
+
+## 2. La structure du projet
+| Dossier | Rôle |
+|---|---|
+| `src/` | Entités, contrôleurs, services |
+| `templates/` | Vues Twig |
+| `config/` | Configuration |
+| `public/` | Point d'entrée web |
+
+> 💡 **Conseil d'Alfred** : « Chaque chose à sa place, Monsieur. Un projet rangé est un projet maîtrisé. »
+MD);
+
+        // Chapitre 2
+        $c2 = $this->makeChapter($manager, $session, 1, "L'entité Produit");
+        $this->makePage($manager, $c2, 0, 'Modéliser les gadgets', <<<'MD'
+# L'entité Produit
+
+🦇 **Mission.** Modéliser un gadget de l'arsenal : un **nom**, un **prix**, un **stock**.
+
+## 1. Générer l'entité
+```bash
+php bin/console make:entity Product
+```
+
+## 2. Les champs
+```php
+#[ORM\Entity(repositoryClass: ProductRepository::class)]
+class Product
+{
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    private ?int $id = null;
+
+    #[ORM\Column(length: 255)]
+    private string $name;
+
+    #[ORM\Column]
+    private float $price;
+
+    #[ORM\Column]
+    private int $stock = 0;
+}
+```
+
+## À retenir
+- Une **entité** correspond à une **table** en base de données.
+- Chaque attribut `#[ORM\Column]` décrit une **colonne**.
+
+> 💡 **Conseil d'Alfred** : « N'oubliez pas le `stock`, Monsieur. Une rupture de Batarang en pleine patrouille serait fâcheuse. »
+MD);
+
+        // Chapitre 3
+        $c3 = $this->makeChapter($manager, $session, 2, 'La base de données');
+        $this->makePage($manager, $c3, 0, 'Préparer la Batcave (migrations)', <<<'MD'
+# La base de données
+
+🦇 **Étape.** Connecter le projet à une base et y créer la table `product`.
+
+## 1. Configurer l'accès (`.env`)
+```bash
+DATABASE_URL="mysql://root:root@127.0.0.1:3306/batman_corp"
+```
+
+## 2. Générer et appliquer la migration
+```bash
+php bin/console make:migration
+php bin/console doctrine:migrations:migrate
+```
+
+## 3. Garnir les rayons (fixtures)
+```bash
+php bin/console doctrine:fixtures:load
+```
+
+## À retenir
+- `make:migration` génère le **SQL** à partir de vos entités.
+- `doctrine:migrations:migrate` l'**applique** à la base.
+
+> 💡 **Conseil d'Alfred** : « Testez toujours sur des données factices avant l'ouverture, Monsieur. »
+MD);
+
+        // Chapitre 4 (+ évaluation)
+        $c4 = $this->makeChapter($manager, $session, 3, 'Afficher le catalogue');
+        $this->makePage($manager, $c4, 0, 'Le contrôleur du catalogue', <<<'MD'
+# Afficher le catalogue
+
+🦇 **Objectif.** Afficher la liste des produits sur une page `/catalogue`.
+
+## 1. Créer le contrôleur
+```bash
+php bin/console make:controller CatalogController
+```
+
+## 2. La route et l'action
+```php
+#[Route('/catalogue', name: 'catalog')]
+public function index(ProductRepository $products): Response
+{
+    return $this->render('catalog/index.html.twig', [
+        'products' => $products->findAll(),
+    ]);
+}
+```
+
+## 3. La vue Twig
+```twig
+{% for product in products %}
+  <article class="card">
+    <h2>{{ product.name }}</h2>
+    <p>{{ product.price }} €</p>
+  </article>
+{% endfor %}
+```
+
+## À retenir
+- Le contrôleur reçoit la requête et renvoie une `Response`.
+- Le `ProductRepository` est **injecté** automatiquement par Symfony.
+
+> 💡 **Conseil d'Alfred** : « Sobre et élégant — comme la nuit, Monsieur. Validez ce chapitre, puis prouvez vos acquis dans le quiz ci-dessous. »
+MD);
+
+        $eval = $this->makeEvaluation($manager, $c4, 1, 'Quiz — Démarrage Symfony', "Alfred évalue vos premiers pas.", 30);
+        $this->makeQcm($manager, $eval, 0, 'Quelle commande crée une entité Doctrine ?', 2, false, [
+            'php bin/console make:entity' => true,
+            'symfony new entity' => false,
+            'composer require entity' => false,
+            'php bin/console new:entity' => false,
+        ]);
+        $this->makeQcm($manager, $eval, 1, 'Quel dossier contient les contrôleurs ?', 1, false, [
+            'src/Controller' => true,
+            'templates/' => false,
+            'config/' => false,
+            'public/' => false,
+        ]);
+        $this->makeQcm($manager, $eval, 2, 'Quelles commandes gèrent les migrations ? (plusieurs réponses)', 2, true, [
+            'make:migration' => true,
+            'doctrine:migrations:migrate' => true,
+            'make:controller' => false,
+            'cache:clear' => false,
+        ]);
+        $this->makeFree($manager, $eval, 3, 'Pourquoi est-il important de stocker le `stock` d\'un produit ?', 2);
+    }
+
+    // ---- fixture builders ----
+
+    private function makeSession(ObjectManager $m, Course $course, int $pos, string $title, ?string $pitch): Session
+    {
+        $s = (new Session())->setTitle($title)->setPitch($pitch)->setPosition($pos)->setRenderConfig(self::DEFAULT_RENDER_CONFIG);
+        $course->addSession($s);
+        $m->persist($s);
+
+        return $s;
+    }
+
+    private function makeChapter(ObjectManager $m, Session $session, int $pos, string $title): Chapter
+    {
+        $ch = (new Chapter())->setTitle($title)->setPosition($pos);
+        $session->addChapter($ch);
+        $m->persist($ch);
+
+        return $ch;
+    }
+
+    private function makePage(ObjectManager $m, Chapter $chapter, int $pos, string $title, string $content, int $points = 5): Page
+    {
+        $p = (new Page())->setTitle($title)->setContent($content)->setPoints($points)->setPosition($pos);
+        $chapter->addPage($p);
+        $m->persist($p);
+
+        return $p;
+    }
+
+    private function makeEvaluation(ObjectManager $m, Chapter $chapter, int $pos, string $title, ?string $desc, int $reward): Evaluation
+    {
+        $e = (new Evaluation())->setTitle($title)->setDescription($desc)->setPointsReward($reward)->setPosition($pos);
+        $chapter->addEvaluation($e);
+        $m->persist($e);
+
+        return $e;
+    }
+
+    /** @param array<string, bool> $choices text => isCorrect */
+    private function makeQcm(ObjectManager $m, Evaluation $eval, int $pos, string $statement, int $points, bool $multiple, array $choices): Question
+    {
+        $q = (new Question())->setType(Question::TYPE_QCM)->setStatement($statement)->setPoints($points)->setMultiple($multiple)->setPosition($pos);
+        $eval->addQuestion($q);
+        $m->persist($q);
+        $i = 0;
+        foreach ($choices as $text => $ok) {
+            $c = (new Choice())->setText((string) $text)->setCorrect($ok)->setPosition($i++);
+            $q->addChoice($c);
+            $m->persist($c);
+        }
+
+        return $q;
+    }
+
+    private function makeFree(ObjectManager $m, Evaluation $eval, int $pos, string $statement, int $points): Question
+    {
+        $q = (new Question())->setType(Question::TYPE_FREE)->setStatement($statement)->setPoints($points)->setPosition($pos);
+        $eval->addQuestion($q);
+        $m->persist($q);
+
+        return $q;
     }
 }
