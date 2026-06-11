@@ -11,7 +11,7 @@
         <div class="grid gap-6 lg:grid-cols-4">
             <!-- Courses list -->
             <Card class="lg:col-span-1">
-                <CardHeader class="flex-row items-center justify-between space-y-0">
+                <CardHeader class="flex flex-row items-center justify-between space-y-0">
                     <CardTitle class="text-base">Cours</CardTitle>
                     <Button size="sm" @click="createCourse"><IconPlus class="size-4" /></Button>
                 </CardHeader>
@@ -34,7 +34,7 @@
                 <template v-else>
                     <!-- Course -->
                     <Card>
-                        <CardHeader class="flex-row items-center justify-between space-y-0">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0">
                             <CardTitle class="text-base">Cours</CardTitle>
                             <div class="flex gap-2">
                                 <Button variant="outline" size="sm" @click="duplicateCourse"><IconCopy class="size-4" /> Dupliquer</Button>
@@ -128,7 +128,7 @@
 
                     <!-- Evaluations -->
                     <Card v-if="chapter">
-                        <CardHeader class="flex-row items-center justify-between space-y-0">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0">
                             <CardTitle class="text-base">Évaluations</CardTitle>
                             <Button size="sm" variant="outline" @click="addEvaluation"><IconPlus class="size-4" /> Évaluation</Button>
                         </CardHeader>

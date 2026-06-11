@@ -43,7 +43,7 @@
                     <div v-for="c in courses" :key="c.id" class="flex items-center justify-between gap-3 border-b pb-2 last:border-0">
                         <div class="min-w-0">
                             <div class="truncate text-sm font-medium">{{ c.title }}</div>
-                            <div class="text-xs text-muted-foreground">{{ c.sessions.length }} séances · {{ evalsOf(c) }} évals</div>
+                            <div class="text-xs text-muted-foreground">{{ pluralize(c.sessions.length, 'séance') }} · {{ pluralize(evalsOf(c), 'éval') }}</div>
                         </div>
                         <div class="flex items-center gap-2">
                             <Badge v-if="c.category && c.category !== 'other'" variant="secondary" class="uppercase">{{ c.category }}</Badge>
@@ -61,6 +61,7 @@ import { computed } from 'vue'
 import { IconBook, IconLayoutList, IconFileText, IconClipboardCheck, IconHelpCircle, IconPencil } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import StatCard from '@/components/StatCard.vue'
+import { pluralize } from '@/lib/format'
 import { useCoursesStore } from '@/stores/courses'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'

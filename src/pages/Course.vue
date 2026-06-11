@@ -38,7 +38,7 @@
                                 <div class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-sm font-semibold text-accent-foreground">{{ Number(i) + 1 }}</div>
                                 <div>
                                     <div class="font-medium">{{ s.title }}</div>
-                                    <div class="text-sm text-muted-foreground">{{ chapterCount(s) }} chapitres · {{ pageCount(s) }} pages</div>
+                                    <div class="text-sm text-muted-foreground">{{ pluralize(chapterCount(s), 'chapitre') }} · {{ pluralize(pageCount(s), 'page') }}</div>
                                 </div>
                             </div>
                             <RouterLink :to="`/course/${course.id}/session/${s.id}`">
@@ -56,7 +56,7 @@
                     <Card>
                         <CardHeader>
                             <CardTitle class="text-base">Ma progression</CardTitle>
-                            <CardDescription>{{ donePages }} / {{ totalPages }} pages terminées</CardDescription>
+                            <CardDescription>{{ donePages }} / {{ totalPages }} {{ totalPages >= 2 ? 'pages terminées' : 'page terminée' }}</CardDescription>
                         </CardHeader>
                         <CardContent><Progress :model-value="pct" /></CardContent>
                     </Card>
@@ -83,6 +83,7 @@ import { useRoute } from 'vue-router'
 import { IconSchool, IconArrowRight } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import Stat from '@/components/StatPill.vue'
+import { pluralize } from '@/lib/format'
 import { useCoursesStore } from '@/stores/courses'
 import { useGamificationStore } from '@/stores/gamification'
 import { useAuthStore } from '@/stores/auth'

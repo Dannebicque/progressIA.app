@@ -18,7 +18,7 @@
                 <template v-if="currentStep">
                     <!-- page -->
                     <Card v-if="currentStep.type === 'page'">
-                        <CardHeader class="flex-row items-center justify-between space-y-0">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0">
                             <CardTitle>{{ currentStep.data.title }}</CardTitle>
                             <Badge v-if="gam.isPageDone(currentStep.id)" variant="default" class="gap-1"><IconCheck class="size-3.5" /> Terminé</Badge>
                         </CardHeader>
@@ -57,7 +57,7 @@
                 <Card class="sticky top-24">
                     <CardHeader>
                         <CardTitle class="text-base">Sommaire</CardTitle>
-                        <CardDescription>{{ donePages }} / {{ totalPages }} pages terminées</CardDescription>
+                        <CardDescription>{{ donePages }} / {{ totalPages }} {{ totalPages >= 2 ? 'pages terminées' : 'page terminée' }}</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-4">
                         <Progress :model-value="sessionPct" />
