@@ -23,6 +23,11 @@
                 <RouterLink v-if="auth.isTeacher()" to="/backoffice" :class="navLink">Back-office</RouterLink>
                 <RouterLink to="/dashboard/student" :class="navLink">Mon tableau</RouterLink>
 
+                <button @click="toggleTheme" class="inline-flex size-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/15 outline-none focus-visible:ring-2 focus-visible:ring-white/70 cursor-pointer" aria-label="Toggle theme">
+                    <IconSun v-if="isDark" class="size-5" />
+                    <IconMoon v-else class="size-5" />
+                </button>
+
                 <template v-if="auth.user">
                     <DropdownMenu>
                         <DropdownMenuTrigger
@@ -75,12 +80,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { IconSearch, IconLogout, IconLayoutDashboard, IconChartBar, IconUserCog } from '@tabler/icons-vue'
+import { IconSearch, IconLogout, IconLayoutDashboard, IconChartBar, IconUserCog, IconSun, IconMoon } from '@tabler/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
+const isDark = ref(false)
+
+onMounted(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+})
+
+function toggleTheme() {
+    isDark.value = !isDark.value
+    if (isDark.value) {
+        document.documentElement.classList.add('dark')
+        localStorage.setItem('theme', 'dark')
+    } else {
+        document.documentElement.classList.remove('dark')
+        localStorage.setItem('theme', 'light')
+    }
+}
 import {
     DropdownMenu,
     DropdownMenuContent,
