@@ -30,6 +30,16 @@
             </div>
         </section>
 
+        <!-- Recent Courses -->
+        <section v-if="auth.isAuthenticated && recentCourses.length" class="mt-8">
+            <h2 class="mb-4 text-xl font-semibold tracking-tight">
+                {{ auth.isTeacher() ? 'Mes derniers cours édités' : 'Continuer mon apprentissage' }}
+            </h2>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <CourseCard v-for="c in recentCourses" :key="c.id" :course="c" />
+            </div>
+        </section>
+
         <!-- Featured + side -->
         <section class="mt-8 grid gap-6 lg:grid-cols-3">
             <div class="lg:col-span-2">
@@ -67,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { IconArrowRight, IconTrophy, IconSparkles } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import CourseCard from '@/components/CourseCard.vue'
@@ -76,8 +86,25 @@ import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { api } from '@/api/client'
 
 const store = useCoursesStore()
 const auth = useAuthStore()
 const featured = computed(() => store.courses.slice(0, 4))
+
+const recentCourses = ref<any[]>([])
+const loadingRecent = ref(false)
+
+onMounted(async () => {
+    if (auth.isAuthenticated) {
+        loadingRecent.value = true
+        try {
+            recentCourses.value = await api.get<any[]>('/api/me/recent-courses')
+        } catch (e) {
+            console.error('Failed to fetch recent courses', e)
+        } finally {
+            loadingRecent.value = false
+        }
+    }
+})
 </script>

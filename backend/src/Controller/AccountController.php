@@ -39,27 +39,77 @@ final class AccountController
 
         $data = json_decode($request->getContent(), true) ?: [];
         $errors = [];
+        $isTeacher = in_array('ROLE_TEACHER', $user->getRoles(), true);
 
         if (array_key_exists('name', $data)) {
-            $name = trim((string) $data['name']);
-            if ('' === $name) {
-                $errors['name'] = 'Le nom est requis.';
-            } else {
-                $user->setName($name);
+            if ($isTeacher) {
+                $name = trim((string) $data['name']);
+                if ('' === $name) {
+                    $errors['name'] = 'Le nom est requis.';
+                } else {
+                    $user->setName($name);
+                }
             }
         }
 
         if (array_key_exists('email', $data)) {
-            $email = trim((string) $data['email']);
-            if (!filter_var($email, \FILTER_VALIDATE_EMAIL)) {
-                $errors['email'] = 'Email invalide.';
-            } elseif ($email !== $user->getEmail()) {
-                $existing = $this->users->findOneBy(['email' => $email]);
-                if ($existing && $existing->getId() !== $user->getId()) {
-                    $errors['email'] = 'Cet email est déjà utilisé.';
-                } else {
-                    $user->setEmail($email);
+            if ($isTeacher) {
+                $email = trim((string) $data['email']);
+                if (!filter_var($email, \FILTER_VALIDATE_EMAIL)) {
+                    $errors['email'] = 'Email invalide.';
+                } elseif ($email !== $user->getEmail()) {
+                    $existing = $this->users->findOneBy(['email' => $email]);
+                    if ($existing && $existing->getId() !== $user->getId()) {
+                        $errors['email'] = 'Cet email est déjà utilisé.';
+                    } else {
+                        $user->setEmail($email);
+                    }
                 }
+            }
+        }
+
+        if (array_key_exists('avatar', $data)) {
+            $avatarData = $data['avatar'];
+            if (null === $avatarData || '' === $avatarData) {
+                if ($user->getAvatar()) {
+                    $oldFile = __DIR__ . '/../../public/' . $user->getAvatar();
+                    if (is_file($oldFile)) {
+                        @unlink($oldFile);
+                    }
+                }
+                $user->setAvatar(null);
+            } elseif (preg_match('/^data:image\/(\w+);base64,/', $avatarData, $type)) {
+                $base64 = substr($avatarData, strpos($avatarData, ',') + 1);
+                $type = strtolower($type[1]);
+
+                if (!in_array($type, ['jpg', 'jpeg', 'gif', 'png', 'webp'], true)) {
+                    $errors['avatar'] = 'Format d\'image invalide (seuls jpg, jpeg, png, gif, webp sont supportés).';
+                } else {
+                    $decodedData = base64_decode($base64);
+                    if ($decodedData === false) {
+                        $errors['avatar'] = 'Décodage de l\'image échoué.';
+                    } else {
+                        $uploadDir = __DIR__ . '/../../public/uploads/avatars';
+                        if (!is_dir($uploadDir)) {
+                            mkdir($uploadDir, 0777, true);
+                        }
+
+                        $filename = sprintf('avatar_%d_%s.%s', $user->getId(), time(), $type);
+                        $filepath = $uploadDir . '/' . $filename;
+
+                        if ($user->getAvatar()) {
+                            $oldFile = __DIR__ . '/../../public/' . $user->getAvatar();
+                            if (is_file($oldFile)) {
+                                @unlink($oldFile);
+                            }
+                        }
+
+                        file_put_contents($filepath, $decodedData);
+                        $user->setAvatar('uploads/avatars/' . $filename);
+                    }
+                }
+            } else {
+                $errors['avatar'] = 'Format de l\'avatar non supporté.';
             }
         }
 
@@ -94,6 +144,10 @@ final class AccountController
             'name' => $user->getName(),
             'roles' => $user->getRoles(),
             'points' => $user->getPoints(),
+            'avatar' => $user->getAvatar(),
+            'studentGroup' => $user->getStudentGroup(),
+            'studentYear' => $user->getStudentYear(),
+            'studentInstitution' => $user->getStudentInstitution(),
         ]);
     }
 }

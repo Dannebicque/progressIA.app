@@ -58,6 +58,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read'])]
     private int $points = 0;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read'])]
+    private ?string $avatar = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    #[Groups(['user:read'])]
+    private ?string $studentGroup = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    #[Groups(['user:read'])]
+    private ?string $studentYear = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    #[Groups(['user:read'])]
+    private ?string $studentInstitution = null;
+
     /** @var Collection<int, Badge> */
     #[ORM\OneToMany(targetEntity: Badge::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     #[ORM\OrderBy(['awardedAt' => 'DESC'])]
@@ -190,5 +206,53 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function eraseCredentials(): void
     {
+    }
+
+    public function getAvatar(): ?string
+    {
+        return $this->avatar;
+    }
+
+    public function setAvatar(?string $avatar): static
+    {
+        $this->avatar = $avatar;
+
+        return $this;
+    }
+
+    public function getStudentGroup(): ?string
+    {
+        return $this->studentGroup;
+    }
+
+    public function setStudentGroup(?string $studentGroup): static
+    {
+        $this->studentGroup = $studentGroup;
+
+        return $this;
+    }
+
+    public function getStudentYear(): ?string
+    {
+        return $this->studentYear;
+    }
+
+    public function setStudentYear(?string $studentYear): static
+    {
+        $this->studentYear = $studentYear;
+
+        return $this;
+    }
+
+    public function getStudentInstitution(): ?string
+    {
+        return $this->studentInstitution;
+    }
+
+    public function setStudentInstitution(?string $studentInstitution): static
+    {
+        $this->studentInstitution = $studentInstitution;
+
+        return $this;
     }
 }

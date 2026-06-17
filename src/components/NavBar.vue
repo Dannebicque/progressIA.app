@@ -28,6 +28,7 @@
                         <DropdownMenuTrigger
                             class="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/70">
                             <Avatar class="size-9 ring-2 ring-white/40">
+                                <AvatarImage v-if="auth.user?.avatar" :src="`${apiBaseUrl}/${auth.user.avatar}`" alt="Avatar" class="object-cover" />
                                 <AvatarFallback class="bg-white font-semibold text-indigo-700">
                                     {{ initials }}
                                 </AvatarFallback>
@@ -79,7 +80,7 @@ import { useRouter } from 'vue-router'
 import { IconSearch, IconLogout, IconLayoutDashboard, IconChartBar, IconUserCog } from '@tabler/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -92,6 +93,7 @@ import {
 const auth = useAuthStore()
 const router = useRouter()
 const q = ref('')
+const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
 const navLink =
     'hidden sm:inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium text-white/90 transition hover:bg-white/15 outline-none focus-visible:ring-2 focus-visible:ring-white/70'

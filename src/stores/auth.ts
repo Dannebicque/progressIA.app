@@ -17,6 +17,10 @@ export interface AuthUser {
   roles: string[]
   points: number
   badges: Badge[]
+  avatar?: string | null
+  studentGroup?: string | null
+  studentYear?: string | null
+  studentInstitution?: string | null
 }
 
 export const useAuthStore = defineStore('auth', {

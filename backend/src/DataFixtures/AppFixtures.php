@@ -42,7 +42,13 @@ class AppFixtures extends Fixture
         $teacher->setPassword($this->hasher->hashPassword($teacher, 'teacher'));
         $manager->persist($teacher);
 
-        $student = (new User())->setEmail('student@pedagoflow.test')->setName('Élève Démo')->setRoles(['ROLE_STUDENT']);
+        $student = (new User())
+            ->setEmail('student@pedagoflow.test')
+            ->setName('Élève Démo')
+            ->setRoles(['ROLE_STUDENT'])
+            ->setStudentGroup('TD1 - TP2')
+            ->setStudentYear('BUT2 - MMI')
+            ->setStudentInstitution('IUT de Bordeaux');
         $student->setPassword($this->hasher->hashPassword($student, 'student'));
         $manager->persist($student);
     }
@@ -54,6 +60,7 @@ class AppFixtures extends Fixture
         // map legacy ids to categories
         $categories = ['php-oop-example' => 'back'];
 
+        $i = 10;
         foreach ($data['courses'] ?? [] as $c) {
             $course = (new Course())
                 ->setTitle($c['title'] ?? 'Sans titre')
@@ -62,7 +69,9 @@ class AppFixtures extends Fixture
                 ->setContext($c['context'] ?? null)
                 ->setAccentColor($c['accentColor'] ?? null)
                 ->setLevel($c['level'] ?? null)
-                ->setScenario($c['scenario'] ?? null);
+                ->setScenario($c['scenario'] ?? null)
+                ->setUpdatedAt((new \DateTimeImmutable())->modify("-{$i} days"));
+            $i++;
             $manager->persist($course);
 
             foreach (array_values($c['sessions'] ?? []) as $si => $s) {
@@ -100,7 +109,8 @@ class AppFixtures extends Fixture
         $front = (new Course())
             ->setTitle('Vue 3 — Composants & réactivité')->setTheme('Frontend')->setCategory('front')
             ->setContext('Développement Front')->setAccentColor('#06b6d4')->setLevel('Intermédiaire')
-            ->setScenario('Construire des interfaces réactives avec Vue 3 et la Composition API');
+            ->setScenario('Construire des interfaces réactives avec Vue 3 et la Composition API')
+            ->setUpdatedAt((new \DateTimeImmutable())->modify('-5 hours'));
         $manager->persist($front);
         $s = (new Session())->setTitle('Séance 1 — Les bases de Vue')->setPitch('Composants, props, réactivité')->setPosition(0)->setRenderConfig(self::DEFAULT_RENDER_CONFIG);
         $front->addSession($s);
@@ -117,12 +127,13 @@ class AppFixtures extends Fixture
             $manager->persist($p);
         }
         $this->addVueEvaluation($manager, $ch);
-
+ 
         // FULLSTACK course
         $full = (new Course())
             ->setTitle('Symfony + Vue — Application fullstack')->setTheme('Fullstack')->setCategory('fullstack')
             ->setContext('Développement Fullstack')->setAccentColor('#8b5cf6')->setLevel('Avancé')
-            ->setScenario('Relier une API Symfony à un front Vue avec authentification JWT');
+            ->setScenario('Relier une API Symfony à un front Vue avec authentification JWT')
+            ->setUpdatedAt((new \DateTimeImmutable())->modify('-2 hours'));
         $manager->persist($full);
         $s2 = (new Session())->setTitle('Séance 1 — API découplée')->setPitch('REST, JWT, CORS')->setPosition(0)->setRenderConfig(self::DEFAULT_RENDER_CONFIG);
         $full->addSession($s2);
@@ -195,7 +206,8 @@ class AppFixtures extends Fixture
             ->setContext('Projet fil rouge — BUT2 MMI')
             ->setAccentColor('#f59e0b')
             ->setLevel('BUT2')
-            ->setScenario("Accompagné par Alfred, le majordome de Wayne Manor, démarrez la boutique en ligne de Batman Corp en Symfony : projet, entité, base de données, catalogue.");
+            ->setScenario("Accompagné par Alfred, le majordome de Wayne Manor, démarrez la boutique en ligne de Batman Corp en Symfony : projet, entité, base de données, catalogue.")
+            ->setUpdatedAt((new \DateTimeImmutable())->modify('-1 hours'));
         $manager->persist($course);
 
         $session = $this->makeSession($manager, $course, 0, 'Séance 1 — Démarrer la boutique en Symfony', 'Du projet vide au premier catalogue, guidé par Alfred.');

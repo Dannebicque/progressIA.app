@@ -677,6 +677,100 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- Create Course Dialog -->
+    <Dialog :open="isCreateCourseOpen" @update:open="(v: any) => (isCreateCourseOpen = v)">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Créer un nouveau cours</DialogTitle>
+          <DialogDescription>
+            Saisissez les informations et la scénarisation globale de votre nouveau cours.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-2 text-sm">
+          <div class="space-y-1">
+            <Label for="newTitle" class="text-xs font-semibold">Titre du cours</Label>
+            <Input id="newTitle" v-model="newCourseTitle" placeholder="Ex: Algorithmique et structures de données" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <Label for="newSemester" class="text-xs font-semibold">Semestre</Label>
+              <Input id="newSemester" v-model="newCourseSemester" placeholder="Ex: S1" />
+            </div>
+            <div class="space-y-1">
+              <Label for="newLevel" class="text-xs font-semibold">Niveau</Label>
+              <Input id="newLevel" v-model="newCourseLevel" placeholder="Ex: Débutant" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <Label for="newTheme" class="text-xs font-semibold">Thème</Label>
+              <Input id="newTheme" v-model="newCourseTheme" placeholder="Ex: Général" />
+            </div>
+            <div class="space-y-1">
+              <Label for="newCategory" class="text-xs font-semibold">Catégorie</Label>
+              <Select id="newCategory" v-model="newCourseCategory">
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="other">Autre</SelectItem>
+                  <SelectItem value="back">Back</SelectItem>
+                  <SelectItem value="front">Front</SelectItem>
+                  <SelectItem value="fullstack">Fullstack</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <Label for="newAccent" class="text-xs font-semibold">Couleur d'accent</Label>
+            <div class="flex items-center gap-2">
+              <input
+                id="newAccent"
+                type="color"
+                v-model="newCourseAccent"
+                class="size-8 cursor-pointer rounded border bg-transparent shrink-0"
+              />
+              <Input v-model="newCourseAccent" class="font-mono text-xs h-8" />
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <Label for="newContext" class="text-xs font-semibold">Pitch / Description courte</Label>
+            <textarea
+              id="newContext"
+              v-model="newCourseContext"
+              rows="2"
+              placeholder="Description rapide..."
+              class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            ></textarea>
+          </div>
+
+          <div class="space-y-1">
+            <Label for="newScenario" class="text-xs font-semibold">Scénario de cours (Histoire / Univers)</Label>
+            <textarea
+              id="newScenario"
+              v-model="newCourseScenario"
+              rows="3"
+              placeholder="Saisissez la scénarisation ou le contexte narratif du cours..."
+              class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            ></textarea>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <Checkbox id="newVisible" :checked="newCourseVisible" @update:checked="(val: any) => { newCourseVisible = val; }" />
+            <Label for="newVisible" class="text-xs font-semibold">Visible pour les étudiants</Label>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="isCreateCourseOpen = false">Annuler</Button>
+          <Button @click="submitCreateCourse">Créer le cours</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </AppLayout>
 </template>
 
@@ -865,17 +959,45 @@ function getChapterItems(ch: any): ChapterItem[] {
   return items.sort((a, b) => a.position - b.position || Number(a.id) - Number(b.id));
 }
 
+// Course creation fields
+const isCreateCourseOpen = ref(false);
+const newCourseTitle = ref("");
+const newCourseTheme = ref("");
+const newCourseCategory = ref("other");
+const newCourseAccent = ref("#7c3aed");
+const newCourseLevel = ref("Débutant");
+const newCourseSemester = ref("S1");
+const newCourseContext = ref("");
+const newCourseScenario = ref("");
+const newCourseVisible = ref(true);
+
 // CRUD Operations: Course
-async function createCourse() {
+function createCourse() {
+  newCourseTitle.value = "Nouveau cours";
+  newCourseTheme.value = "Général";
+  newCourseCategory.value = "other";
+  newCourseAccent.value = "#7c3aed";
+  newCourseLevel.value = "Débutant";
+  newCourseSemester.value = "S1";
+  newCourseContext.value = "";
+  newCourseScenario.value = "";
+  newCourseVisible.value = true;
+  isCreateCourseOpen.value = true;
+}
+
+async function submitCreateCourse() {
   const c = await store.createCourse({
-    title: "Nouveau cours",
-    theme: "Général",
-    category: "other",
-    accentColor: "#7c3aed",
-    level: "Débutant",
-    semester: "S1",
-    visible: true,
+    title: newCourseTitle.value,
+    theme: newCourseTheme.value,
+    category: newCourseCategory.value,
+    accentColor: newCourseAccent.value,
+    level: newCourseLevel.value,
+    semester: newCourseSemester.value,
+    context: newCourseContext.value,
+    scenario: newCourseScenario.value,
+    visible: newCourseVisible.value,
   });
+  isCreateCourseOpen.value = false;
   selectCourse(c.id);
   showToast("Cours créé");
 }

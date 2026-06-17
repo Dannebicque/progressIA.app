@@ -10,23 +10,94 @@
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="space-y-4 lg:col-span-2">
-                <h2 class="text-lg font-semibold tracking-tight">Mes cours</h2>
-                <Card v-for="c in courses" :key="c.id">
-                    <CardContent class="py-5">
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="flex items-center gap-2">
-                                <div class="font-semibold">{{ c.title }}</div>
-                                <Badge v-if="c.category && c.category !== 'other'" variant="secondary" class="uppercase">{{ c.category }}</Badge>
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <h2 class="text-lg font-semibold tracking-tight">Mes cours</h2>
+                </div>
+
+                <!-- Search and Filters -->
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <div class="relative flex-1">
+                        <IconSearch class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input v-model="q" placeholder="Rechercher un cours..." class="pl-9" />
+                    </div>
+                    <Select v-model="category">
+                        <SelectTrigger class="sm:w-44"><SelectValue placeholder="Catégorie" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Toutes catégories</SelectItem>
+                            <SelectItem value="back">Backend</SelectItem>
+                            <SelectItem value="front">Frontend</SelectItem>
+                            <SelectItem value="fullstack">Fullstack</SelectItem>
+                            <SelectItem value="other">Autre</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select v-model="level">
+                        <SelectTrigger class="sm:w-40"><SelectValue placeholder="Niveau" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous niveaux</SelectItem>
+                            <SelectItem value="Débutant">Débutant</SelectItem>
+                            <SelectItem value="Intermédiaire">Intermédiaire</SelectItem>
+                            <SelectItem value="Avancé">Avancé</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <!-- Course list -->
+                <div v-if="paginatedCourses.length" class="space-y-4">
+                    <Card v-for="c in paginatedCourses" :key="c.id" class="border-l-4" :style="{ borderLeftColor: c.accentColor || '#7c3aed' }">
+                        <CardContent class="py-5">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="font-semibold">{{ c.title }}</div>
+                                    <Badge v-if="c.category && c.category !== 'other'" variant="secondary" class="uppercase">{{ c.category }}</Badge>
+                                </div>
+                                <RouterLink :to="`/course/${c.id}`"><Button size="sm" variant="outline">Ouvrir</Button></RouterLink>
                             </div>
-                            <RouterLink :to="`/course/${c.id}`"><Button size="sm" variant="outline">Ouvrir</Button></RouterLink>
-                        </div>
-                        <div class="mt-4 flex items-center gap-3">
-                            <Progress :model-value="gam.coursePct(c)" class="flex-1" />
-                            <span class="shrink-0 text-sm text-muted-foreground">{{ gam.coursePct(c) }}%</span>
-                        </div>
-                    </CardContent>
+                            <p v-if="c.scenario" class="mt-2 text-sm text-muted-foreground line-clamp-2">{{ c.scenario }}</p>
+                            <div class="mt-4 flex items-center gap-3">
+                                <Progress :model-value="gam.coursePct(c)" class="flex-1" />
+                                <span class="shrink-0 text-sm text-muted-foreground">{{ gam.coursePct(c) }}%</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <!-- Empty State (No match) -->
+                <Card v-else-if="store.courses.length" class="grid place-items-center gap-2 py-16 text-center">
+                    <IconSearchOff class="size-10 text-muted-foreground" />
+                    <p class="font-medium text-lg">Aucun cours ne correspond</p>
+                    <p class="text-sm text-muted-foreground max-w-sm">Essayez de modifier vos critères de recherche ou réinitialisez les filtres.</p>
+                    <Button variant="outline" size="sm" class="mt-3" @click="resetFilters">Réinitialiser</Button>
                 </Card>
-                <Card v-if="!courses.length" class="grid place-items-center py-12 text-center text-muted-foreground">Aucun cours disponible.</Card>
+
+                <!-- Empty State (No courses at all) -->
+                <Card v-else class="grid place-items-center py-12 text-center text-muted-foreground">
+                    Aucun cours disponible.
+                </Card>
+
+                <!-- Pagination Controls -->
+                <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-border/40 pt-4 mt-2">
+                    <p class="text-sm text-muted-foreground">
+                        Page {{ currentPage }} sur {{ totalPages }} ({{ filteredCourses.length }} cours)
+                    </p>
+                    <div class="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            :disabled="currentPage === 1"
+                            @click="currentPage--"
+                        >
+                            Précédent
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            :disabled="currentPage === totalPages"
+                            @click="currentPage++"
+                        >
+                            Suivant
+                        </Button>
+                    </div>
+                </div>
             </div>
 
             <aside class="space-y-6">
@@ -44,8 +115,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { IconStar, IconChartBar } from '@tabler/icons-vue'
+import { ref, computed, watch } from 'vue'
+import { IconStar, IconChartBar, IconSearch, IconSearchOff } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useCoursesStore } from '@/stores/courses'
@@ -55,12 +126,49 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const store = useCoursesStore()
 const gam = useGamificationStore()
 const auth = useAuthStore()
 
-const courses = computed(() => store.courses)
 const points = computed(() => auth.user?.points ?? 0)
 const badges = computed(() => auth.user?.badges || [])
+
+// Filter and Pagination State
+const q = ref('')
+const category = ref('all')
+const level = ref('all')
+const currentPage = ref(1)
+const itemsPerPage = 5
+
+// Reset page when search or filters change
+watch([q, category, level], () => {
+    currentPage.value = 1
+})
+
+const filteredCourses = computed(() => {
+    const term = q.value.trim().toLowerCase()
+    return store.courses.filter((c: any) => {
+        if (c.visible === false) return false
+        if (category.value !== 'all' && (c.category || 'other') !== category.value) return false
+        if (level.value !== 'all' && (c.level || '') !== level.value) return false
+        if (term && !`${c.title} ${c.theme} ${c.scenario}`.toLowerCase().includes(term)) return false
+        return true
+    })
+})
+
+const paginatedCourses = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage
+    return filteredCourses.value.slice(start, start + itemsPerPage)
+})
+
+const totalPages = computed(() => Math.ceil(filteredCourses.value.length / itemsPerPage))
+
+function resetFilters() {
+    q.value = ''
+    category.value = 'all'
+    level.value = 'all'
+}
 </script>
