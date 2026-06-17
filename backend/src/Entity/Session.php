@@ -59,6 +59,10 @@ class Session
     #[Groups(['course:read', 'session:read', 'session:write'])]
     private int $position = 0;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    #[Groups(['course:read', 'session:read', 'session:write'])]
+    private bool $visible = true;
+
     /** @var Collection<int, Chapter> */
     #[ORM\OneToMany(targetEntity: Chapter::class, mappedBy: 'session', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
@@ -160,6 +164,18 @@ class Session
                 $chapter->setSession(null);
             }
         }
+
+        return $this;
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
+    public function setVisible(bool $visible): static
+    {
+        $this->visible = $visible;
 
         return $this;
     }

@@ -62,6 +62,14 @@ class Course
     #[Groups(['course:read', 'course:write'])]
     private ?string $level = null;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    #[Groups(['course:read', 'course:write', 'session:read'])]
+    private ?string $semester = null;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    #[Groups(['course:read', 'course:write', 'session:read'])]
+    private bool $visible = true;
+
     #[ORM\Column(type: 'text', nullable: true)]
     #[Groups(['course:read', 'course:write'])]
     private ?string $scenario = null;
@@ -189,6 +197,30 @@ class Course
                 $session->setCourse(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getSemester(): ?string
+    {
+        return $this->semester;
+    }
+
+    public function setSemester(?string $semester): static
+    {
+        $this->semester = $semester;
+
+        return $this;
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
+    public function setVisible(bool $visible): static
+    {
+        $this->visible = $visible;
 
         return $this;
     }

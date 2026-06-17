@@ -60,6 +60,10 @@ class Evaluation
     #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'eval:write'])]
     private int $position = 0;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'eval:write'])]
+    private bool $visible = true;
+
     /** @var Collection<int, Question> */
     #[ORM\OneToMany(targetEntity: Question::class, mappedBy: 'evaluation', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
@@ -169,5 +173,17 @@ class Evaluation
         }
 
         return $max;
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
+    public function setVisible(bool $visible): static
+    {
+        $this->visible = $visible;
+
+        return $this;
     }
 }

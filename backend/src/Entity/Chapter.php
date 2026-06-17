@@ -50,6 +50,10 @@ class Chapter
     #[Groups(['course:read', 'session:read', 'chapter:read', 'chapter:write'])]
     private int $position = 0;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    #[Groups(['course:read', 'session:read', 'chapter:read', 'chapter:write'])]
+    private bool $visible = true;
+
     /** @var Collection<int, Page> */
     #[ORM\OneToMany(targetEntity: Page::class, mappedBy: 'chapter', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
@@ -155,6 +159,18 @@ class Chapter
         if ($this->evaluations->removeElement($evaluation) && $evaluation->getChapter() === $this) {
             $evaluation->setChapter(null);
         }
+
+        return $this;
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
+    public function setVisible(bool $visible): static
+    {
+        $this->visible = $visible;
 
         return $this;
     }

@@ -20,7 +20,7 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-auto">
-                        <Stat label="Séances" :value="course.sessions.length" />
+                        <Stat label="Séances" :value="visibleSessions.length" />
                         <Stat label="Pages" :value="totalPages" />
                         <Stat label="Pts à gagner" :value="totalPoints" />
                         <Stat label="Progression" :value="`${pct}%`" :accent="accent" />
@@ -32,7 +32,7 @@
                 <!-- sessions -->
                 <div class="space-y-3 lg:col-span-2">
                     <h2 class="text-lg font-semibold tracking-tight">Séances</h2>
-                    <Card v-for="(s, i) in course.sessions" :key="s.id">
+                    <Card v-for="(s, i) in visibleSessions" :key="s.id">
                         <CardContent class="flex items-center justify-between gap-4 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-sm font-semibold text-accent-foreground">{{ Number(i) + 1 }}</div>
@@ -46,7 +46,7 @@
                             </RouterLink>
                         </CardContent>
                     </Card>
-                    <Card v-if="!course.sessions.length" class="grid place-items-center py-10 text-center text-muted-foreground">
+                    <Card v-if="!visibleSessions.length" class="grid place-items-center py-10 text-center text-muted-foreground">
                         Aucune séance pour ce cours.
                     </Card>
                 </div>
@@ -98,6 +98,10 @@ const gam = useGamificationStore()
 const auth = useAuthStore()
 
 const course = computed(() => store.getCourse(route.params.id as string))
+const visibleSessions = computed(() => {
+    if (!course.value?.sessions) return []
+    return course.value.sessions.filter((s: any) => s.visible !== false)
+})
 const accent = computed(() => course.value?.accentColor || '#7c3aed')
 const badges = computed(() => auth.user?.badges || [])
 

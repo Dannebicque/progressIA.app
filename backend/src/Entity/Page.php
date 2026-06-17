@@ -58,6 +58,10 @@ class Page
     #[Groups(['course:read', 'session:read', 'chapter:read', 'page:read', 'page:write'])]
     private int $position = 0;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    #[Groups(['course:read', 'session:read', 'chapter:read', 'page:read', 'page:write'])]
+    private bool $visible = true;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -119,6 +123,18 @@ class Page
     public function setPosition(int $position): static
     {
         $this->position = $position;
+
+        return $this;
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
+    public function setVisible(bool $visible): static
+    {
+        $this->visible = $visible;
 
         return $this;
     }

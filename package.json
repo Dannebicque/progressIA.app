@@ -23,7 +23,7 @@
     "clsx": "^2.1.1",
     "dompurify": "^3.4.9",
     "highlight.js": "^11.9.0",
-    "marked": "^5.1.2",
+    "marked": "^18.0.5",
     "pinia": "^3.0.4",
     "reka-ui": "^2.9.10",
     "tailwind-merge": "^3.6.0",
@@ -33,6 +33,7 @@
     "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.20",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.12.2",
     "@vitejs/plugin-basic-ssl": "^2.3.0",

@@ -6,7 +6,8 @@
                 <Card class="overflow-hidden pt-0">
                     <div class="h-1.5 w-full" :style="{ background: accent }"></div>
                     <CardContent class="pt-5">
-                        <RouterLink :to="`/course/${course.id}`" class="text-xs text-muted-foreground hover:text-primary">← {{ course.title }}</RouterLink>
+                        <RouterLink :to="`/course/${course.id}`"
+                            class="text-xs text-muted-foreground hover:text-primary">← {{ course.title }}</RouterLink>
                         <h1 class="mt-1 text-2xl font-bold tracking-tight">{{ session.title }}</h1>
                         <p v-if="currentStep" class="mt-1 text-sm text-muted-foreground">
                             Étape {{ stepIndex + 1 }} / {{ steps.length }} · {{ currentStep.chapter }}
@@ -20,13 +21,16 @@
                     <Card v-if="currentStep.type === 'page'">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0">
                             <CardTitle>{{ currentStep.data.title }}</CardTitle>
-                            <Badge v-if="gam.isPageDone(currentStep.id)" variant="default" class="gap-1"><IconCheck class="size-3.5" /> Terminé</Badge>
+                            <Badge v-if="gam.isPageDone(currentStep.id)" variant="default" class="gap-1">
+                                <IconCheck class="size-3.5" /> Terminé
+                            </Badge>
                         </CardHeader>
                         <CardContent>
                             <MarkdownViewer :source="currentStep.data.content" />
                             <div class="mt-4">
                                 <Button v-if="!gam.isPageDone(currentStep.id)" @click="complete(currentStep.data)">
-                                    <IconCircleCheck class="size-4" /> Marquer comme terminé (+{{ currentStep.data.points }} pts)
+                                    <IconCircleCheck class="size-4" /> Marquer comme terminé (+{{
+                                    currentStep.data.points }} pts)
                                 </Button>
                                 <span v-else class="text-sm text-emerald-600">Page validée ✓</span>
                             </div>
@@ -43,10 +47,13 @@
                         <IconArrowLeft class="size-4" /> Précédent
                     </Button>
                     <Button v-if="stepIndex < steps.length - 1" @click="go(stepIndex + 1)">
-                        Suivant <IconArrowRight class="size-4" />
+                        Suivant
+                        <IconArrowRight class="size-4" />
                     </Button>
                     <RouterLink v-else-if="nextSession" :to="`/course/${course.id}/session/${nextSession.id}`">
-                        <Button>Séance suivante <IconArrowRight class="size-4" /></Button>
+                        <Button>Séance suivante
+                            <IconArrowRight class="size-4" />
+                        </Button>
                     </RouterLink>
                     <span v-else class="text-sm text-muted-foreground">Fin de la séance 🎉</span>
                 </div>
@@ -57,20 +64,25 @@
                 <Card class="sticky top-24">
                     <CardHeader>
                         <CardTitle class="text-base">Sommaire</CardTitle>
-                        <CardDescription>{{ donePages }} / {{ totalPages }} {{ totalPages >= 2 ? 'pages terminées' : 'page terminée' }}</CardDescription>
+                        <CardDescription>{{ donePages }} / {{ totalPages }} {{ totalPages >= 2 ? 'pages terminées' :
+                            'page terminée'
+                            }}</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-4">
                         <Progress :model-value="sessionPct" />
 
                         <nav class="space-y-3">
                             <div v-for="grp in grouped" :key="grp.chapter">
-                                <div class="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{{ grp.chapter }}</div>
+                                <div class="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{{
+                                    grp.chapter
+                                    }}</div>
                                 <button v-for="st in grp.items" :key="st.key" @click="go(st.index)"
                                     class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition"
                                     :class="st.index === stepIndex ? 'bg-accent font-medium text-accent-foreground' : 'hover:bg-muted'">
                                     <component :is="stepIcon(st)" class="size-4 shrink-0" :class="stepIconClass(st)" />
                                     <span class="flex-1 truncate">{{ st.data.title }}</span>
-                                    <span v-if="st.type === 'eval' && gam.evalResult(st.id)" class="text-xs text-muted-foreground">
+                                    <span v-if="st.type === 'eval' && gam.evalResult(st.id)"
+                                        class="text-xs text-muted-foreground">
                                         {{ gam.evalResult(st.id)?.score }}/{{ gam.evalResult(st.id)?.maxScore }}
                                     </span>
                                 </button>
@@ -80,7 +92,8 @@
                         <Separator />
                         <div>
                             <div class="mb-2 text-sm font-medium">Séances du cours</div>
-                            <RouterLink v-for="s in course.sessions" :key="s.id" :to="`/course/${course.id}/session/${s.id}`"
+                            <RouterLink v-for="s in course.sessions" :key="s.id"
+                                :to="`/course/${course.id}/session/${s.id}`"
                                 class="block rounded-md px-2 py-1.5 text-sm transition"
                                 :class="s.id === session.id ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-muted'">
                                 {{ s.title }}
@@ -126,8 +139,15 @@ const steps = computed<Step[]>(() => {
     const out: Step[] = []
     let i = 0
     for (const ch of session.value?.chapters || []) {
-        for (const p of ch.pages || []) out.push({ key: `p${p.id}`, index: i++, type: 'page', id: Number(p.id), chapter: ch.title, data: p })
-        for (const ev of ch.evaluations || []) out.push({ key: `e${ev.id}`, index: i++, type: 'eval', id: Number(ev.id), chapter: ch.title, data: ev })
+        if (ch.visible === false) continue
+        for (const p of ch.pages || []) {
+            if (p.visible === false) continue
+            out.push({ key: `p${p.id}`, index: i++, type: 'page', id: Number(p.id), chapter: ch.title, data: p })
+        }
+        for (const ev of ch.evaluations || []) {
+            if (ev.visible === false) continue
+            out.push({ key: `e${ev.id}`, index: i++, type: 'eval', id: Number(ev.id), chapter: ch.title, data: ev })
+        }
     }
     return out
 })

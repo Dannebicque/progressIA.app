@@ -76,6 +76,7 @@ watch(() => route.query.q, (val) => {
 const filtered = computed(() => {
     const term = q.value.trim().toLowerCase()
     return store.courses.filter((c: any) => {
+        if (c.visible === false) return false
         if (level.value !== 'all' && (c.level || '') !== level.value) return false
         if (term && !`${c.title} ${c.theme} ${c.scenario}`.toLowerCase().includes(term)) return false
         return true
