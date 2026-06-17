@@ -166,9 +166,16 @@
                 </Button>
                 <Label class="text-xs uppercase font-bold text-muted-foreground tracking-wider">Séances de ce cours</Label>
               </div>
-              <Button size="xs" variant="outline" @click="addSession" class="gap-1 text-xs">
-                <IconPlus class="size-3.5" /> Séance
-              </Button>
+              <div class="flex gap-1">
+                <RouterLink :to="`/backoffice/courses/${course.id}/tracking`">
+                  <Button size="xs" variant="outline" class="gap-1 text-xs text-indigo-600 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20">
+                    <IconUsers class="size-3.5" /> Suivi
+                  </Button>
+                </RouterLink>
+                <Button size="xs" variant="outline" @click="addSession" class="gap-1 text-xs">
+                  <IconPlus class="size-3.5" /> Séance
+                </Button>
+              </div>
             </div>
             
             <div class="flex flex-wrap items-center gap-1.5">
@@ -771,6 +778,8 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+
   </AppLayout>
 </template>
 
@@ -791,7 +800,9 @@ import {
   IconUpload,
   IconLayoutList,
   IconBook,
-  IconLayoutSidebar
+  IconLayoutSidebar,
+  IconUsers,
+  IconSparkles
 } from "@tabler/icons-vue";
 import AppLayout from "@/components/AppLayout.vue";
 import NavBarAdmin from "@/components/NavBarAdmin.vue";
@@ -806,6 +817,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { api } from "@/api/client";
 import {
   Dialog,
   DialogContent,
@@ -834,6 +848,8 @@ const expandedBlocks = ref<Record<string, boolean>>({});
 
 const isMarkdownHelpOpen = ref(false);
 const isLeftPanelVisible = ref(true);
+
+
 
 // Active objects
 const course = computed(() =>

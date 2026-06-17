@@ -1,11 +1,12 @@
 <template>
   <AppLayout>
     <NavBarAdmin
-      title="Gestion des  Étudiants / inscrits"
-      description="Filtrage multi-critères et import CSV."
+      title="Gestion des Étudiants / Inscrits"
+      description="Suivi de la progression, KPIs et import de fichiers CSV."
     />
 
     <div class="grid gap-6 lg:grid-cols-3">
+      <!-- COLUMN 1: Filters -->
       <Card>
         <CardHeader>
           <CardTitle class="text-base">Filtres</CardTitle>
@@ -28,7 +29,7 @@
           </div>
 
           <div class="space-y-1.5">
-            <Label>Diplôme</Label>
+            <Label>Année / Diplôme</Label>
             <Select v-model="diplomeFilter">
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -44,23 +45,7 @@
           </div>
 
           <div class="space-y-1.5">
-            <Label>Année universitaire</Label>
-            <Select v-model="anneeFilter">
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes</SelectItem>
-                <SelectItem
-                  v-for="item in anneeOptions"
-                  :key="item"
-                  :value="item"
-                  >{{ item }}</SelectItem
-                >
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="space-y-1.5">
-            <Label>Groupes</Label>
+            <Label>Groupes de TD/TP</Label>
             <div class="max-h-40 space-y-2 overflow-auto rounded-md border p-2">
               <label
                 v-for="group in groupOptions"
@@ -75,18 +60,20 @@
                 />
                 <span>{{ group }}</span>
               </label>
+              <p v-if="!groupOptions.length" class="text-xs text-muted-foreground italic">Aucun groupe défini.</p>
             </div>
             <p class="text-xs text-muted-foreground">
-              Un étudiant peut appartenir à plusieurs groupes.
+              Sélectionnez les groupes à afficher.
             </p>
           </div>
 
-          <Button variant="outline" class="w-full" @click="clearFilters"
+          <Button variant="outline" class="w-full text-xs" @click="clearFilters"
             >Réinitialiser les filtres</Button
           >
         </CardContent>
       </Card>
 
+      <!-- COLUMN 2 & 3: CSV Import & Student list -->
       <div class="space-y-6 lg:col-span-2">
         <Card>
           <CardHeader>
@@ -138,6 +125,7 @@
           </CardContent>
         </Card>
 
+        <!-- Student List -->
         <Card>
           <CardHeader>
             <CardTitle class="text-base"
@@ -145,42 +133,40 @@
             >
           </CardHeader>
           <CardContent class="space-y-3">
-            <div
-              v-for="student in filteredStudents"
-              :key="student.id"
-              class="rounded-lg border p-3"
-            >
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p class="font-medium">
-                    {{ student.firstName }} {{ student.lastName }}
-                  </p>
-                  <p class="text-sm text-muted-foreground">
-                    {{ student.email }}
-                  </p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="outline">{{ student.etablissement }}</Badge>
-                  <Badge variant="secondary">{{ student.diplome }}</Badge>
-                  <Badge>{{ student.anneeUniversitaire }}</Badge>
-                </div>
-              </div>
-              <div class="mt-2 flex flex-wrap gap-2">
-                <Badge
-                  v-for="group in student.groupes"
-                  :key="`${student.id}-${group}`"
-                  variant="outline"
-                >
-                  Groupe {{ group }}
-                </Badge>
-              </div>
+            <div v-if="loading" class="py-8 text-center text-sm text-muted-foreground">
+              Chargement des données étudiants...
             </div>
-            <p
-              v-if="!filteredStudents.length"
-              class="py-8 text-center text-sm text-muted-foreground"
-            >
-              Aucun étudiant pour ces filtres.
-            </p>
+            <template v-else>
+              <div
+                v-for="student in filteredStudents"
+                :key="student.id"
+                class="rounded-lg border p-3 hover:border-primary/40 transition-colors flex items-center justify-between gap-4"
+              >
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="font-medium text-sm">{{ student.name }}</p>
+                    <Badge variant="outline" class="text-[10px]">{{ student.studentGroup || 'Sans groupe' }}</Badge>
+                  </div>
+                  <p class="text-xs text-muted-foreground">{{ student.email }}</p>
+                  <div class="flex flex-wrap items-center gap-2 pt-1 text-[10px]">
+                    <span class="text-muted-foreground">{{ student.studentInstitution || 'Établissement inconnu' }}</span>
+                    <span class="text-muted-foreground">·</span>
+                    <span class="text-muted-foreground">{{ student.studentYear || 'Année inconnue' }}</span>
+                    <span class="text-muted-foreground">·</span>
+                    <span class="font-semibold text-indigo-600 dark:text-indigo-400">🏆 {{ student.points }} pts</span>
+                  </div>
+                </div>
+                <RouterLink :to="'/backoffice/students/' + student.id">
+                  <Button size="xs" variant="outline">Voir la fiche</Button>
+                </RouterLink>
+              </div>
+              <p
+                v-if="!filteredStudents.length"
+                class="py-8 text-center text-sm text-muted-foreground"
+              >
+                Aucun étudiant pour ces filtres.
+              </p>
+            </template>
           </CardContent>
         </Card>
       </div>
@@ -189,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import AppLayout from "@/components/AppLayout.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -212,16 +198,39 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { showToast } from "@/composables/useToast";
 import NavBarAdmin from "@/components/NavBarAdmin.vue";
+import { api } from "@/api/client";
+
 
 interface Student {
   id: number;
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
-  etablissement: string;
-  diplome: string;
-  groupes: string[];
-  anneeUniversitaire: string;
+  studentGroup: string;
+  studentYear: string;
+  studentInstitution: string;
+  points: number;
+  badges: Array<{ code: string; icon: string; label: string; description: string }>;
+  courseStats: Array<{
+    courseId: number;
+    courseTitle: string;
+    courseAccentColor: string;
+    totalPages: number;
+    completedPages: number;
+    progressPct: number;
+    evaluations: Array<{
+      id: number;
+      title: string;
+      pointsReward: number;
+      attempted: boolean;
+      score: number | null;
+      maxScore: number | null;
+      passed: boolean;
+    }>;
+    passedEvaluationsCount: number;
+    totalEvaluationsCount: number;
+    totalEvaluationScore: number;
+    totalEvaluationMaxScore: number;
+  }>;
 }
 
 interface ParsedStudentRow {
@@ -239,52 +248,11 @@ interface ImportError {
   message: string;
 }
 
-const students = ref<Student[]>([
-  {
-    id: 1,
-    firstName: "Léa",
-    lastName: "Martin",
-    email: "lea.martin@campus.fr",
-    etablissement: "IUT Lille",
-    diplome: "BUT INFO",
-    groupes: ["A1", "TP2"],
-    anneeUniversitaire: "2025-2026",
-  },
-  {
-    id: 2,
-    firstName: "Hugo",
-    lastName: "Petit",
-    email: "hugo.petit@campus.fr",
-    etablissement: "IUT Lille",
-    diplome: "BUT INFO",
-    groupes: ["A1"],
-    anneeUniversitaire: "2025-2026",
-  },
-  {
-    id: 3,
-    firstName: "Nina",
-    lastName: "Leclerc",
-    email: "nina.leclerc@campus.fr",
-    etablissement: "Université Lyon 1",
-    diplome: "Licence Pro Dev",
-    groupes: ["B3", "Projet"],
-    anneeUniversitaire: "2024-2025",
-  },
-  {
-    id: 4,
-    firstName: "Tom",
-    lastName: "Robert",
-    email: "tom.robert@campus.fr",
-    etablissement: "Université Lyon 1",
-    diplome: "Master Informatique",
-    groupes: ["M1-IA"],
-    anneeUniversitaire: "2025-2026",
-  },
-]);
+const students = ref<Student[]>([]);
+const loading = ref(false);
 
 const etablissementFilter = ref("all");
 const diplomeFilter = ref("all");
-const anneeFilter = ref("all");
 const selectedGroups = ref<string[]>([]);
 
 const selectedFile = ref<File | null>(null);
@@ -296,32 +264,52 @@ const importSummary = ref<{
   errors: ImportError[];
 } | null>(null);
 
+
+
+async function loadStudents() {
+  loading.value = true;
+  try {
+    const res = await api.get<Student[]>('/api/teacher/students');
+    students.value = res;
+  } catch (e) {
+    console.error(e);
+    showToast('Erreur lors du chargement des données étudiants', 'error');
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  loadStudents();
+});
+
 const etablissementOptions = computed(() =>
-  [...new Set(students.value.map((s) => s.etablissement))].sort(),
+  [...new Set(students.value.map((s) => s.studentInstitution).filter(Boolean))].sort(),
 );
 const diplomeOptions = computed(() =>
-  [...new Set(students.value.map((s) => s.diplome))].sort(),
-);
-const anneeOptions = computed(() =>
-  [...new Set(students.value.map((s) => s.anneeUniversitaire))].sort(),
+  [...new Set(students.value.map((s) => s.studentYear).filter(Boolean))].sort(),
 );
 const groupOptions = computed(() =>
-  [...new Set(students.value.flatMap((s) => s.groupes))].sort(),
+  [
+    ...new Set(
+      students.value.flatMap((s) =>
+        s.studentGroup ? s.studentGroup.split(/[,/\-\s]+/).map((g) => g.trim()).filter(Boolean) : []
+      )
+    )
+  ].sort(),
 );
 
 const filteredStudents = computed(() =>
   students.value.filter((s) => {
     const okEtablissement =
       etablissementFilter.value === "all" ||
-      s.etablissement === etablissementFilter.value;
+      s.studentInstitution === etablissementFilter.value;
     const okDiplome =
-      diplomeFilter.value === "all" || s.diplome === diplomeFilter.value;
-    const okAnnee =
-      anneeFilter.value === "all" || s.anneeUniversitaire === anneeFilter.value;
+      diplomeFilter.value === "all" || s.studentYear === diplomeFilter.value;
     const okGroupes =
       !selectedGroups.value.length ||
-      selectedGroups.value.some((g) => s.groupes.includes(g));
-    return okEtablissement && okDiplome && okAnnee && okGroupes;
+      selectedGroups.value.some((g) => s.studentGroup && s.studentGroup.includes(g));
+    return okEtablissement && okDiplome && okGroupes;
   }),
 );
 
@@ -336,7 +324,6 @@ function toggleGroup(group: string) {
 function clearFilters() {
   etablissementFilter.value = "all";
   diplomeFilter.value = "all";
-  anneeFilter.value = "all";
   selectedGroups.value = [];
 }
 
@@ -384,13 +371,14 @@ async function runCsvImport() {
 
     students.value.push({
       id: nextId(),
-      firstName: row.firstName,
-      lastName: row.lastName,
+      name: `${row.firstName} ${row.lastName}`,
       email: row.email,
-      etablissement: row.etablissement,
-      diplome: row.diplome,
-      groupes: row.groupes,
-      anneeUniversitaire: row.anneeUniversitaire,
+      studentGroup: row.groupes.join(', '),
+      studentYear: row.diplome,
+      studentInstitution: row.etablissement,
+      points: 0,
+      badges: [],
+      courseStats: []
     });
     imported += 1;
     importProgress.value = ((i + 1) / rows.length) * 100;
