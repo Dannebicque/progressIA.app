@@ -38,12 +38,12 @@ class AppFixtures extends Fixture
 
     private function loadUsers(ObjectManager $manager): void
     {
-        $teacher = (new User())->setEmail('teacher@pedagoflow.test')->setName('Prof. Démo')->setRoles(['ROLE_TEACHER']);
+        $teacher = (new User())->setEmail('teacher@progressia.test')->setName('Prof. Démo')->setRoles(['ROLE_TEACHER']);
         $teacher->setPassword($this->hasher->hashPassword($teacher, 'teacher'));
         $manager->persist($teacher);
 
         $student = (new User())
-            ->setEmail('student@pedagoflow.test')
+            ->setEmail('student@progressia.test')
             ->setName('Élève Démo')
             ->setRoles(['ROLE_STUDENT'])
             ->setStudentGroup('TD1 - TP2')

@@ -1,9 +1,11 @@
 <template>
     <div class="min-h-screen grid place-items-center bg-gradient-to-b from-indigo-50 via-background to-background px-4">
         <div class="w-full max-w-md">
-            <RouterLink to="/" class="mb-6 flex items-center justify-center gap-3">
-                <div class="grid size-11 place-items-center rounded-xl bg-brand-gradient font-bold text-white">PF</div>
-                <span class="text-xl font-semibold tracking-tight">PedagoFlow</span>
+            <RouterLink to="/" class="mb-6 flex items-center justify-center">
+                <div class="grid place-items-center font-bold text-white">
+                    <img src="@/assets/logos/logo_full.png" alt="ProgressIA" />
+
+                </div>
             </RouterLink>
 
             <Card>
@@ -34,11 +36,11 @@
                         <p class="mb-1 font-medium text-foreground">Comptes de démonstration</p>
                         <Button type="button" variant="ghost" size="sm"
                             class="h-auto w-full justify-start px-2 py-1 font-normal text-muted-foreground" @click="fill('teacher')">
-                            Enseignant — teacher@pedagoflow.test / teacher
+                            Enseignant — teacher@progressia.test / teacher
                         </Button>
                         <Button type="button" variant="ghost" size="sm"
                             class="h-auto w-full justify-start px-2 py-1 font-normal text-muted-foreground" @click="fill('student')">
-                            Étudiant — student@pedagoflow.test / student
+                            Étudiant — student@progressia.test / student
                         </Button>
                     </div>
                 </CardContent>
@@ -71,7 +73,7 @@ const route = useRoute()
 const auth = useAuthStore()
 
 function fill(role: 'teacher' | 'student') {
-    email.value = `${role}@pedagoflow.test`
+    email.value = `${role}@progressia.test`
     password.value = role
 }
 

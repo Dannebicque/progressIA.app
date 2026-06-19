@@ -1,153 +1,16 @@
 <template>
-  <AppLayout>
-    <NavBarAdmin
-      title="Gestion des cours"
-      description="Interface d'édition interactive Gutenberg & GitBook."
-    />
+  <BackofficeLayout>
 
     <!-- Main 3-column layout -->
     <div class="grid grid-cols-12 gap-6 items-start">
       
       <!-- COLUMN 1: Cours & Paramètres Globaux -->
-      <div v-show="isLeftPanelVisible" class="col-span-12 lg:col-span-3 space-y-6">
-        <!-- Course Selection Card -->
-        <Card>
-          <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle class="text-sm font-semibold">Mes Cours</CardTitle>
-            <Button size="icon-sm" variant="outline" @click="createCourse" title="Nouveau cours">
-              <IconPlus class="size-4" />
-            </Button>
-          </CardHeader>
-          <CardContent class="space-y-1 max-h-[30vh] overflow-y-auto pr-1">
-            <div
-              v-for="c in courses"
-              :key="c.id"
-              class="flex items-center gap-1 rounded-md transition"
-              :class="selectedCourseId === c.id ? 'bg-accent font-medium' : 'hover:bg-muted'"
-            >
-              <button
-                class="flex-1 truncate px-3 py-2 text-left text-sm"
-                @click="selectCourse(c.id)"
-              >
-                <span class="inline-block size-2 rounded-full mr-2" :style="{ backgroundColor: c.accentColor || '#7c3aed' }"></span>
-                {{ c.title }}
-              </button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="text-destructive opacity-50 hover:opacity-100"
-                @click="removeCourse(c.id)"
-              >
-                <IconTrash class="size-4" />
-              </Button>
-            </div>
-            <p v-if="!courses.length" class="text-xs text-center text-muted-foreground py-4">
-              Aucun cours.
-            </p>
-          </CardContent>
-        </Card>
-
-        <!-- Course Global Settings Card -->
-        <Card v-if="course" class="border-t-4" :style="{ borderTopColor: cAccent }">
-          <CardHeader class="pb-2">
-            <CardTitle class="text-sm font-semibold flex items-center gap-1.5">
-              <IconSettings class="size-4 text-muted-foreground" />
-              Paramètres du cours
-            </CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-3 text-xs">
-            <div class="space-y-1">
-              <Label class="text-[10px] uppercase font-bold text-muted-foreground">Titre</Label>
-              <Input v-model="cTitle" class="h-8 text-xs" @blur="saveCourse" />
-            </div>
-            
-            <div class="grid grid-cols-2 gap-2">
-              <div class="space-y-1">
-                <Label class="text-[10px] uppercase font-bold text-muted-foreground">Semestre</Label>
-                <Input v-model="cSemester" placeholder="Ex: S1" class="h-8 text-xs" @blur="saveCourse" />
-              </div>
-              <div class="space-y-1">
-                <Label class="text-[10px] uppercase font-bold text-muted-foreground">Niveau</Label>
-                <Input v-model="cLevel" placeholder="Ex: Débutant" class="h-8 text-xs" @blur="saveCourse" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <div class="space-y-1">
-                <Label class="text-[10px] uppercase font-bold text-muted-foreground">Thème</Label>
-                <Input v-model="cTheme" class="h-8 text-xs" @blur="saveCourse" />
-              </div>
-              <div class="space-y-1">
-                <Label class="text-[10px] uppercase font-bold text-muted-foreground">Catégorie</Label>
-                <Select v-model="cCategory" @update:model-value="saveCourse">
-                  <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="other">Autre</SelectItem>
-                    <SelectItem value="back">Back</SelectItem>
-                    <SelectItem value="front">Front</SelectItem>
-                    <SelectItem value="fullstack">Fullstack</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <Label class="text-[10px] uppercase font-bold text-muted-foreground">Couleur d'accent</Label>
-              <div class="flex items-center gap-1.5">
-                <input
-                  type="color"
-                  v-model="cAccent"
-                  class="size-7 cursor-pointer rounded border bg-transparent shrink-0"
-                  @change="saveCourse"
-                />
-                <Input v-model="cAccent" class="h-8 text-xs font-mono" @blur="saveCourse" />
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2 py-1">
-              <Checkbox id="cVisible" :checked="cVisible" @update:checked="(val: any) => { cVisible = val; saveCourse(); }" />
-              <Label for="cVisible" class="font-medium text-xs">Visible pour les étudiants</Label>
-            </div>
-
-            <Separator class="my-2" />
-
-            <div class="space-y-1">
-              <Label class="text-[10px] uppercase font-bold text-muted-foreground">Pitch / Contexte</Label>
-              <textarea
-                v-model="cContext"
-                rows="2"
-                placeholder="Description rapide..."
-                class="w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                @blur="saveCourse"
-              ></textarea>
-            </div>
-
-            <div class="space-y-1">
-              <Label class="text-[10px] uppercase font-bold text-muted-foreground">Scénario de cours</Label>
-              <textarea
-                v-model="cScenario"
-                rows="3"
-                placeholder="Scénarisation globale du cours..."
-                class="w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                @blur="saveCourse"
-              ></textarea>
-            </div>
-
-            <div class="flex gap-2 pt-2">
-              <Button variant="outline" size="xs" class="flex-1" @click="duplicateCourse">
-                <IconCopy class="size-3 mr-1" /> Dupliquer
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       <!-- COLUMN 2: Zone de Construction Centrale (Builder) -->
-      <div class="col-span-12 space-y-6" :class="isLeftPanelVisible ? 'lg:col-span-6' : 'lg:col-span-9'">
+      <div class="col-span-12 space-y-6" :class="isOutlineVisible ? 'lg:col-span-9' : 'lg:col-span-12'">
         <Card v-if="!course" class="grid place-items-center py-24 text-muted-foreground">
           <div class="text-center space-y-2">
             <IconFolder class="size-10 mx-auto text-muted-foreground/50" />
-            <p class="text-sm">Sélectionnez un cours dans le volet de gauche.</p>
+            <p class="text-sm">Sélectionnez un cours dans le menu de gauche.</p>
           </div>
         </Card>
 
@@ -159,8 +22,8 @@
                 <Button 
                   size="icon-xs" 
                   variant="outline" 
-                  @click="isLeftPanelVisible = !isLeftPanelVisible" 
-                  :title="isLeftPanelVisible ? 'Masquer la liste des cours' : 'Afficher la liste des cours'"
+                  @click="isOutlineVisible = !isOutlineVisible" 
+                  :title="isOutlineVisible ? 'Masquer la structure' : 'Afficher la structure'"
                 >
                   <IconLayoutSidebar class="size-3.5" />
                 </Button>
@@ -170,6 +33,11 @@
                 <RouterLink :to="`/backoffice/courses/${course.id}/tracking`">
                   <Button size="xs" variant="outline" class="gap-1 text-xs text-indigo-600 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20">
                     <IconUsers class="size-3.5" /> Suivi
+                  </Button>
+                </RouterLink>
+                <RouterLink :to="`/backoffice/courses/${course.id}/storytelling`">
+                  <Button size="xs" variant="outline" class="gap-1 text-xs text-amber-600 border-amber-200 dark:border-amber-900/60 hover:bg-amber-50/50 dark:hover:bg-amber-950/20">
+                    <IconMail class="size-3.5" /> Storytelling & Mails
                   </Button>
                 </RouterLink>
                 <Button size="xs" variant="outline" @click="addSession" class="gap-1 text-xs">
@@ -201,7 +69,7 @@
           <!-- Active Session details -->
           <div v-if="session" class="space-y-6">
             <!-- Session Main Card -->
-            <Card :id="`session-${session.id}`" class="border-l-4 transition-all" :class="{ 'element-highlight': highlightedElementId === `session-${session.id}` }" :style="{ borderLeftColor: cAccent }">
+            <Card :id="`session-${session.id}`" class="border-l-4 transition-all" :class="{ 'element-highlight': highlightedElementId === `session-${session.id}` }" :style="{ borderLeftColor: course?.accentColor || '#7c3aed' }">
               <CardContent class="pt-5 space-y-4">
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex-1 space-y-2">
@@ -541,7 +409,7 @@
       </div>
 
       <!-- COLUMN 3: Arborescence de Navigation Interactive (Hierarchy Outline) -->
-      <div v-if="course" class="col-span-12 lg:col-span-3">
+      <div v-if="course && isOutlineVisible" class="col-span-12 lg:col-span-3">
         <Card class="sticky top-24">
           <CardHeader class="pb-3 border-b flex flex-row items-center justify-between space-y-0">
             <CardTitle class="text-sm font-semibold flex items-center gap-1.5">
@@ -685,115 +553,22 @@
       </DialogContent>
     </Dialog>
 
-    <!-- Create Course Dialog -->
-    <Dialog :open="isCreateCourseOpen" @update:open="(v: any) => (isCreateCourseOpen = v)">
-      <DialogContent class="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Créer un nouveau cours</DialogTitle>
-          <DialogDescription>
-            Saisissez les informations et la scénarisation globale de votre nouveau cours.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div class="space-y-4 py-2 text-sm">
-          <div class="space-y-1">
-            <Label for="newTitle" class="text-xs font-semibold">Titre du cours</Label>
-            <Input id="newTitle" v-model="newCourseTitle" placeholder="Ex: Algorithmique et structures de données" />
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <Label for="newSemester" class="text-xs font-semibold">Semestre</Label>
-              <Input id="newSemester" v-model="newCourseSemester" placeholder="Ex: S1" />
-            </div>
-            <div class="space-y-1">
-              <Label for="newLevel" class="text-xs font-semibold">Niveau</Label>
-              <Input id="newLevel" v-model="newCourseLevel" placeholder="Ex: Débutant" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <Label for="newTheme" class="text-xs font-semibold">Thème</Label>
-              <Input id="newTheme" v-model="newCourseTheme" placeholder="Ex: Général" />
-            </div>
-            <div class="space-y-1">
-              <Label for="newCategory" class="text-xs font-semibold">Catégorie</Label>
-              <Select id="newCategory" v-model="newCourseCategory">
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="other">Autre</SelectItem>
-                  <SelectItem value="back">Back</SelectItem>
-                  <SelectItem value="front">Front</SelectItem>
-                  <SelectItem value="fullstack">Fullstack</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <Label for="newAccent" class="text-xs font-semibold">Couleur d'accent</Label>
-            <div class="flex items-center gap-2">
-              <input
-                id="newAccent"
-                type="color"
-                v-model="newCourseAccent"
-                class="size-8 cursor-pointer rounded border bg-transparent shrink-0"
-              />
-              <Input v-model="newCourseAccent" class="font-mono text-xs h-8" />
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <Label for="newContext" class="text-xs font-semibold">Pitch / Description courte</Label>
-            <textarea
-              id="newContext"
-              v-model="newCourseContext"
-              rows="2"
-              placeholder="Description rapide..."
-              class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            ></textarea>
-          </div>
-
-          <div class="space-y-1">
-            <Label for="newScenario" class="text-xs font-semibold">Scénario de cours (Histoire / Univers)</Label>
-            <textarea
-              id="newScenario"
-              v-model="newCourseScenario"
-              rows="3"
-              placeholder="Saisissez la scénarisation ou le contexte narratif du cours..."
-              class="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            ></textarea>
-          </div>
-
-          <div class="flex items-center gap-2 pt-1">
-            <Checkbox id="newVisible" :checked="newCourseVisible" @update:checked="(val: any) => { newCourseVisible = val; }" />
-            <Label for="newVisible" class="text-xs font-semibold">Visible pour les étudiants</Label>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" @click="isCreateCourseOpen = false">Annuler</Button>
-          <Button @click="submitCreateCourse">Créer le cours</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
 
 
-  </AppLayout>
+
+  </BackofficeLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { 
   IconPlus, 
   IconTrash, 
-  IconCopy, 
   IconEye, 
   IconEyeOff, 
   IconChevronUp, 
   IconChevronDown, 
-  IconSettings, 
   IconFolder, 
   IconFileText, 
   IconClipboardCheck, 
@@ -802,10 +577,9 @@ import {
   IconBook,
   IconLayoutSidebar,
   IconUsers,
-  IconSparkles
+  IconMail
 } from "@tabler/icons-vue";
-import AppLayout from "@/components/AppLayout.vue";
-import NavBarAdmin from "@/components/NavBarAdmin.vue";
+import BackofficeLayout from "@/components/BackofficeLayout.vue";
 import MarkdownEditor from "@/components/MarkdownEditor.vue";
 import EvaluationEditor from "@/components/EvaluationEditor.vue";
 import { useCoursesStore } from "@/stores/courses";
@@ -817,9 +591,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { api } from "@/api/client";
 import {
   Dialog,
   DialogContent,
@@ -828,17 +599,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 
 // Store
 const store = useCoursesStore();
-const courses = computed(() => store.courses);
 
 // Navigation IDs
 const selectedCourseId = ref<number | string | null>(null);
@@ -847,9 +611,10 @@ const highlightedElementId = ref<string | null>(null);
 const expandedBlocks = ref<Record<string, boolean>>({});
 
 const isMarkdownHelpOpen = ref(false);
-const isLeftPanelVisible = ref(true);
+const isOutlineVisible = ref(true);
 
-
+const route = useRoute();
+const router = useRouter();
 
 // Active objects
 const course = computed(() =>
@@ -863,17 +628,6 @@ const session = computed(
       (s: any) => String(s.id) === selectedSessionId.value,
     ) || null,
 );
-
-// Course parameter fields
-const cTitle = ref("");
-const cTheme = ref("");
-const cLevel = ref("");
-const cCategory = ref("other");
-const cAccent = ref("#7c3aed");
-const cSemester = ref("");
-const cVisible = ref(true);
-const cContext = ref("");
-const cScenario = ref("");
 
 // Session fields
 const sTitle = ref("");
@@ -894,24 +648,6 @@ const totalOutlineItems = computed(() => {
   return count;
 });
 
-// Watch course selection
-watch(
-  course,
-  (c) => {
-    if (!c) return;
-    cTitle.value = c.title;
-    cTheme.value = c.theme || "";
-    cLevel.value = c.level || "";
-    cCategory.value = c.category || "other";
-    cAccent.value = c.accentColor || "#7c3aed";
-    cSemester.value = c.semester || "";
-    cVisible.value = c.visible !== false;
-    cContext.value = c.context || "";
-    cScenario.value = c.scenario || "";
-  },
-  { immediate: true },
-);
-
 // Watch active session
 watch(session, (s) => {
   sTitle.value = s?.title || "";
@@ -922,8 +658,24 @@ watch(session, (s) => {
 // Load courses on start
 onMounted(async () => {
   if (!store.loaded) await store.fetchCourses();
-  if (store.courses[0]) selectCourse(store.courses[0].id);
+  
+  const queryId = route.query.courseId;
+  if (queryId) {
+    selectCourse(String(queryId));
+  } else if (store.courses[0]) {
+    selectCourse(store.courses[0].id);
+    router.replace({ query: { courseId: String(store.courses[0].id) } });
+  }
 });
+
+watch(
+  () => route.query.courseId,
+  (newId) => {
+    if (newId) {
+      selectCourse(String(newId));
+    }
+  }
+);
 
 function selectCourse(id: number | string) {
   selectedCourseId.value = id;
@@ -975,121 +727,7 @@ function getChapterItems(ch: any): ChapterItem[] {
   return items.sort((a, b) => a.position - b.position || Number(a.id) - Number(b.id));
 }
 
-// Course creation fields
-const isCreateCourseOpen = ref(false);
-const newCourseTitle = ref("");
-const newCourseTheme = ref("");
-const newCourseCategory = ref("other");
-const newCourseAccent = ref("#7c3aed");
-const newCourseLevel = ref("Débutant");
-const newCourseSemester = ref("S1");
-const newCourseContext = ref("");
-const newCourseScenario = ref("");
-const newCourseVisible = ref(true);
 
-// CRUD Operations: Course
-function createCourse() {
-  newCourseTitle.value = "Nouveau cours";
-  newCourseTheme.value = "Général";
-  newCourseCategory.value = "other";
-  newCourseAccent.value = "#7c3aed";
-  newCourseLevel.value = "Débutant";
-  newCourseSemester.value = "S1";
-  newCourseContext.value = "";
-  newCourseScenario.value = "";
-  newCourseVisible.value = true;
-  isCreateCourseOpen.value = true;
-}
-
-async function submitCreateCourse() {
-  const c = await store.createCourse({
-    title: newCourseTitle.value,
-    theme: newCourseTheme.value,
-    category: newCourseCategory.value,
-    accentColor: newCourseAccent.value,
-    level: newCourseLevel.value,
-    semester: newCourseSemester.value,
-    context: newCourseContext.value,
-    scenario: newCourseScenario.value,
-    visible: newCourseVisible.value,
-  });
-  isCreateCourseOpen.value = false;
-  selectCourse(c.id);
-  showToast("Cours créé");
-}
-
-async function removeCourse(id: number | string) {
-  if (
-    !(await confirmDialog({
-      title: "Supprimer ce cours ?",
-      description: "Séances, chapitres, pages et évaluations seront supprimés définitivement.",
-      confirmText: "Supprimer",
-    }))
-  )
-    return;
-  await store.deleteCourse(id);
-  if (selectedCourseId.value === id) selectedCourseId.value = null;
-  showToast("Cours supprimé");
-}
-
-async function saveCourse() {
-  if (!selectedCourseId.value) return;
-  await store.updateCourse(selectedCourseId.value, {
-    title: cTitle.value,
-    theme: cTheme.value,
-    level: cLevel.value,
-    category: cCategory.value,
-    accentColor: cAccent.value,
-    semester: cSemester.value,
-    visible: cVisible.value,
-    context: cContext.value,
-    scenario: cScenario.value,
-  });
-  showToast("Cours enregistré");
-}
-
-async function duplicateCourse() {
-  if (!course.value) return;
-  const src = course.value;
-  const nc = await store.createCourse({
-    title: `${src.title} (copie)`,
-    theme: src.theme,
-    category: src.category,
-    context: src.context,
-    accentColor: src.accentColor,
-    level: src.level,
-    scenario: src.scenario,
-    semester: src.semester,
-    visible: src.visible,
-  });
-  for (const s of src.sessions || []) {
-    const ns = await store.addSession(nc.id, {
-      title: s.title,
-      pitch: s.pitch,
-      visible: s.visible,
-      renderConfig: s.renderConfig,
-    });
-    for (const ch of s.chapters || []) {
-      const nch = await store.addChapter(ns.id, { title: ch.title, visible: ch.visible });
-      for (const p of ch.pages || [])
-        await store.addPage(nch.id, {
-          title: p.title,
-          content: p.content,
-          points: p.points,
-          visible: p.visible,
-        });
-      for (const ev of ch.evaluations || [])
-        await store.addEvaluation(nch.id, {
-          title: ev.title,
-          description: ev.description,
-          pointsReward: ev.pointsReward,
-          visible: ev.visible,
-        });
-    }
-  }
-  selectCourse(nc.id);
-  showToast("Cours dupliqué");
-}
 
 // CRUD Operations: Session
 async function addSession() {

@@ -1,11 +1,10 @@
 <template>
-    <AppLayout>
+    <BackofficeLayout>
         <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight">Statistiques — Enseignant</h1>
                 <p class="text-sm text-muted-foreground">Vue d'ensemble du contenu pédagogique.</p>
             </div>
-            <RouterLink to="/backoffice"><Button variant="outline" size="sm"><IconPencil class="size-4" /> Éditer les cours</Button></RouterLink>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -53,17 +52,16 @@
                 </CardContent>
             </Card>
         </div>
-    </AppLayout>
+    </BackofficeLayout>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { IconBook, IconLayoutList, IconFileText, IconClipboardCheck, IconHelpCircle, IconPencil } from '@tabler/icons-vue'
-import AppLayout from '@/components/AppLayout.vue'
+import { IconBook, IconLayoutList, IconFileText, IconClipboardCheck, IconHelpCircle } from '@tabler/icons-vue'
+import BackofficeLayout from '@/components/BackofficeLayout.vue'
 import StatCard from '@/components/StatCard.vue'
 import { pluralize } from '@/lib/format'
 import { useCoursesStore } from '@/stores/courses'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 

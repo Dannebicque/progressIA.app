@@ -3,7 +3,7 @@
         <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight">Mes statistiques</h1>
-                <p class="text-sm text-muted-foreground">Votre progression et vos récompenses sur PedagoFlow.</p>
+                <p class="text-sm text-muted-foreground">Votre progression et vos récompenses sur ProgressIA.</p>
             </div>
             <Badge variant="secondary" class="gap-1"><IconUser class="size-3.5" /> {{ auth.user?.name }}</Badge>
         </div>

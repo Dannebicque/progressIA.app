@@ -80,6 +80,14 @@ class Course
     #[Groups(['course:read'])]
     private Collection $sessions;
 
+    /** @var Collection<int, EmailTemplate> */
+    #[ORM\OneToMany(targetEntity: EmailTemplate::class, mappedBy: 'course', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $emailTemplates;
+
+    /** @var Collection<int, SentEmail> */
+    #[ORM\OneToMany(targetEntity: SentEmail::class, mappedBy: 'course', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $sentEmails;
+
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     #[Groups(['course:read'])]
     private ?\DateTimeImmutable $updatedAt = null;
@@ -87,6 +95,8 @@ class Course
     public function __construct()
     {
         $this->sessions = new ArrayCollection();
+        $this->emailTemplates = new ArrayCollection();
+        $this->sentEmails = new ArrayCollection();
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -240,5 +250,17 @@ class Course
         $this->updatedAt = $updatedAt;
 
         return $this;
+    }
+
+    /** @return Collection<int, EmailTemplate> */
+    public function getEmailTemplates(): Collection
+    {
+        return $this->emailTemplates;
+    }
+
+    /** @return Collection<int, SentEmail> */
+    public function getSentEmails(): Collection
+    {
+        return $this->sentEmails;
     }
 }

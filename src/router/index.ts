@@ -11,6 +11,7 @@ const router = createRouter({
     { path: '/backoffice', component: () => import('../pages/Backoffice.vue'), meta: { requiresTeacher: true } },
     { path: '/backoffice/courses', component: () => import('../pages/BackofficeCourses.vue'), meta: { requiresTeacher: true } },
     { path: '/backoffice/courses/:id/tracking', component: () => import('../pages/BackofficeCourseTracking.vue'), meta: { requiresTeacher: true } },
+    { path: '/backoffice/courses/:id/storytelling', component: () => import('../pages/BackofficeCourseStorytelling.vue'), meta: { requiresTeacher: true } },
     { path: '/backoffice/users', component: () => import('../pages/BackofficeUsers.vue'), meta: { requiresTeacher: true } },
     { path: '/backoffice/students', component: () => import('../pages/BackofficeStudents.vue'), meta: { requiresTeacher: true } },
     { path: '/backoffice/students/:id', component: () => import('../pages/BackofficeStudentSheet.vue'), meta: { requiresTeacher: true } },

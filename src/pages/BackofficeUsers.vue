@@ -1,10 +1,5 @@
 <template>
-  <AppLayout>
-    <NavBarAdmin
-      title="Gestion des  Utilisateurs"
-      description="Gestion des comptes et rôles."
-      actifItem=""
-    />
+  <BackofficeLayout>
 
     <div class="grid gap-6 lg:grid-cols-3">
       <Card>
@@ -110,13 +105,13 @@
         </CardContent>
       </Card>
     </div>
-  </AppLayout>
+  </BackofficeLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { IconTrash } from "@tabler/icons-vue";
-import AppLayout from "@/components/AppLayout.vue";
+import BackofficeLayout from "@/components/BackofficeLayout.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,7 +126,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { showToast } from "@/composables/useToast";
 import { confirmDialog } from "@/composables/useConfirm";
-import NavBarAdmin from "@/components/NavBarAdmin.vue";
+
 
 type UserRole = "ROLE_TEACHER" | "ROLE_STUDENT";
 type UserStatus = "actif" | "inactif";
@@ -148,21 +143,21 @@ const users = ref<BackofficeUser[]>([
   {
     id: 1,
     name: "Camille Durand",
-    email: "camille.durand@pedagoflow.fr",
+    email: "camille.durand@progressia.fr",
     role: "ROLE_TEACHER",
     status: "actif",
   },
   {
     id: 2,
     name: "Léa Martin",
-    email: "lea.martin@pedagoflow.fr",
+    email: "lea.martin@progressia.fr",
     role: "ROLE_STUDENT",
     status: "actif",
   },
   {
     id: 3,
     name: "Hugo Petit",
-    email: "hugo.petit@pedagoflow.fr",
+    email: "hugo.petit@progressia.fr",
     role: "ROLE_STUDENT",
     status: "inactif",
   },

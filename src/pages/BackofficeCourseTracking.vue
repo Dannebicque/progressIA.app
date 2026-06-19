@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <BackofficeLayout>
     <div v-if="loading" class="py-12 text-center text-muted-foreground text-sm">
       Chargement du suivi de cours...
     </div>
@@ -128,16 +128,15 @@
         <Button class="mt-4" variant="outline">Retour à la liste des cours</Button>
       </RouterLink>
     </div>
-  </AppLayout>
+  </BackofficeLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { IconSchool } from '@tabler/icons-vue'
-import AppLayout from '@/components/AppLayout.vue'
+import BackofficeLayout from '@/components/BackofficeLayout.vue'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'

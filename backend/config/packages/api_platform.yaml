@@ -1,5 +1,5 @@
 api_platform:
-    title: PedagoFlow API
+    title: ProgressIA API
     version: 1.0.0
     # Plain JSON is the default so the Vue front can send/accept application/json;
     # JSON-LD and the HTML docs stay available.

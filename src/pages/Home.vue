@@ -66,7 +66,7 @@
                     <CardHeader>
                         <div class="flex items-center gap-2">
                             <IconSparkles class="size-5 text-primary" />
-                            <CardTitle class="text-base">Pourquoi PedagoFlow ?</CardTitle>
+                            <CardTitle class="text-base">Pourquoi ProgressIA ?</CardTitle>
                         </div>
                         <CardDescription>Interface simple, édition Markdown, suivi pédagogique clair.</CardDescription>
                     </CardHeader>
@@ -79,7 +79,7 @@
             <div class="text-center max-w-3xl mx-auto space-y-4">
                 <Badge variant="outline" class="border-indigo-600/30 text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:text-indigo-400">Pour les établissements</Badge>
                 <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
-                    Déployez PedagoFlow au sein de votre école ou université
+                    Déployez ProgressIA au sein de votre école ou université
                 </h2>
                 <p class="text-muted-foreground text-base sm:text-lg">
                     Offrez à vos enseignants et étudiants une expérience d'apprentissage moderne, immersive et entièrement scénarisée.
@@ -131,7 +131,7 @@
                         </div>
                         <CardTitle class="mt-4 text-lg">Souveraineté des Données</CardTitle>
                         <CardDescription class="mt-2 text-sm leading-relaxed">
-                            Hébergement RGPD, authentification SSO (CAS, Shibboleth, OAuth2) pour connecter PedagoFlow à votre ENT en toute simplicité.
+                            Hébergement RGPD, authentification SSO (CAS, Shibboleth, OAuth2) pour connecter ProgressIA à votre ENT en toute simplicité.
                         </CardDescription>
                     </CardHeader>
                 </Card>

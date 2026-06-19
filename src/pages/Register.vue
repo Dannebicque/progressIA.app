@@ -2,14 +2,14 @@
     <div class="min-h-screen grid place-items-center bg-gradient-to-b from-indigo-50 via-background to-background px-4 py-10">
         <div class="w-full max-w-md">
             <RouterLink to="/" class="mb-6 flex items-center justify-center gap-3">
-                <div class="grid size-11 place-items-center rounded-xl bg-brand-gradient font-bold text-white">PF</div>
-                <span class="text-xl font-semibold tracking-tight">PedagoFlow</span>
+                <div class="grid size-11 place-items-center rounded-xl bg-brand-gradient font-bold text-white">PR</div>
+                <span class="text-xl font-semibold tracking-tight">ProgressIA</span>
             </RouterLink>
 
             <Card>
                 <CardHeader>
                     <CardTitle class="text-xl">Créer un compte</CardTitle>
-                    <CardDescription>Rejoignez PedagoFlow en tant qu'étudiant.</CardDescription>
+                    <CardDescription>Rejoignez ProgressIA en tant qu'étudiant.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form class="space-y-4" @submit.prevent="submit">

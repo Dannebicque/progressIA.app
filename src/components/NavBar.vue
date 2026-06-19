@@ -3,9 +3,11 @@
         <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
             <!-- Brand -->
             <RouterLink to="/" class="flex items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/70">
-                <div class="grid size-10 place-items-center rounded-xl bg-white/20 font-bold backdrop-blur">PF</div>
+                <div class="grid size-10 place-items-center rounded-xl bg-white/20 font-bold backdrop-blur">
+                    <img src="@/assets/logos/logo_icone.png" alt="ProgressIA" class="w-8 h-8" />
+                </div>
                 <div class="hidden sm:block leading-tight">
-                    <div class="font-semibold tracking-tight">PedagoFlow</div>
+                    <div class="font-semibold tracking-tight">ProgressIA</div>
                     <div class="text-xs text-white/80">Concevez. Suivez. Gamifiez.</div>
                 </div>
             </RouterLink>

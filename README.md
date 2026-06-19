@@ -1,4 +1,4 @@
-# PedagoFlow
+# ProgressIA
 
 This template should help get you started developing with Vue 3 in Vite.
 
@@ -47,7 +47,7 @@ npm run build
 npm run lint
 ```
 
-## Prototype PedagoFlow (fr)
+## Prototype ProgressIA (fr)
 
 Ce dépôt contient un prototype Vue 3 + Tailwind CSS pour créer et éditer des cours composés de séances rédigées en Markdown.
 
@@ -80,8 +80,8 @@ symfony server:start -d --no-tls                  # API sur http://127.0.0.1:800
 
 Comptes de démonstration (créés par les fixtures) :
 
-- Enseignant — `teacher@pedagoflow.test` / `teacher`
-- Étudiant — `student@pedagoflow.test` / `student`
+- Enseignant — `teacher@progressia.test` / `teacher`
+- Étudiant — `student@progressia.test` / `student`
 
 ### Endpoints principaux
 

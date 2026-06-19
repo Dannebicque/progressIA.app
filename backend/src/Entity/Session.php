@@ -69,9 +69,19 @@ class Session
     #[Groups(['course:read', 'session:read'])]
     private Collection $chapters;
 
+    /** @var Collection<int, EmailTemplate> */
+    #[ORM\OneToMany(targetEntity: EmailTemplate::class, mappedBy: 'session', cascade: ['persist', 'remove'])]
+    private Collection $emailTemplates;
+
+    /** @var Collection<int, SentEmail> */
+    #[ORM\OneToMany(targetEntity: SentEmail::class, mappedBy: 'session', cascade: ['persist', 'remove'])]
+    private Collection $sentEmails;
+
     public function __construct()
     {
         $this->chapters = new ArrayCollection();
+        $this->emailTemplates = new ArrayCollection();
+        $this->sentEmails = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -178,5 +188,17 @@ class Session
         $this->visible = $visible;
 
         return $this;
+    }
+
+    /** @return Collection<int, EmailTemplate> */
+    public function getEmailTemplates(): Collection
+    {
+        return $this->emailTemplates;
+    }
+
+    /** @return Collection<int, SentEmail> */
+    public function getSentEmails(): Collection
+    {
+        return $this->sentEmails;
     }
 }

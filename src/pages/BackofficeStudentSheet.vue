@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <BackofficeLayout>
     <div v-if="loading" class="py-12 text-center text-muted-foreground text-sm">
       Chargement de la fiche étudiant...
     </div>
@@ -133,13 +133,13 @@
         <Button class="mt-4" variant="outline">Retour à la liste</Button>
       </RouterLink>
     </div>
-  </AppLayout>
+  </BackofficeLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import AppLayout from '@/components/AppLayout.vue'
+import BackofficeLayout from '@/components/BackofficeLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'

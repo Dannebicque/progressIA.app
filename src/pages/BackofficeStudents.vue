@@ -1,9 +1,5 @@
 <template>
-  <AppLayout>
-    <NavBarAdmin
-      title="Gestion des Étudiants / Inscrits"
-      description="Suivi de la progression, KPIs et import de fichiers CSV."
-    />
+  <BackofficeLayout>
 
     <div class="grid gap-6 lg:grid-cols-3">
       <!-- COLUMN 1: Filters -->
@@ -171,12 +167,12 @@
         </Card>
       </div>
     </div>
-  </AppLayout>
+  </BackofficeLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
-import AppLayout from "@/components/AppLayout.vue";
+import BackofficeLayout from "@/components/BackofficeLayout.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -197,7 +193,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { showToast } from "@/composables/useToast";
-import NavBarAdmin from "@/components/NavBarAdmin.vue";
+
 import { api } from "@/api/client";
 
 
