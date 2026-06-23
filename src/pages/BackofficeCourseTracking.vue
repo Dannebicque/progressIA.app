@@ -107,7 +107,7 @@
                     <div class="text-muted-foreground text-[10px] mt-0.5">Note totale : {{ s.totalEvaluationScore }} / {{ s.totalEvaluationMaxScore }}</div>
                   </td>
                   <td class="p-3 text-right pr-6">
-                    <RouterLink :to="`/backoffice/students/${s.id}`">
+                    <RouterLink :to="`/backoffice/courses/${course.id}/students/${s.id}`">
                       <Button size="xs" variant="outline">Fiche étudiant</Button>
                     </RouterLink>
                   </td>

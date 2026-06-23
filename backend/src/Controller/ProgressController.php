@@ -45,6 +45,8 @@ final class ProgressController
                     'score' => $a->getScore(),
                     'maxScore' => $a->getMaxScore(),
                     'passed' => $a->isPassed(),
+                    'feedbackStudent' => $a->getFeedbackStudent(),
+                    'answers' => $a->getAnswers(),
                 ];
             }
         }

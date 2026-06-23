@@ -59,10 +59,20 @@ final class TeacherStudentStatsController
                         $pageIds[] = $p->getId();
                     }
                     foreach ($ch->getEvaluations() as $e) {
+                        $questionsData = [];
+                        foreach ($e->getQuestions() as $q) {
+                            $questionsData[] = [
+                                'id' => $q->getId(),
+                                'statement' => $q->getStatement(),
+                                'type' => $q->getType(),
+                                'fileRequired' => $q->isFileRequired(),
+                            ];
+                        }
                         $evaluations[] = [
                             'id' => $e->getId(),
                             'title' => $e->getTitle(),
                             'pointsReward' => $e->getPointsReward(),
+                            'questions' => $questionsData,
                         ];
                     }
                 }
@@ -97,9 +107,13 @@ final class TeacherStudentStatsController
 
             if (!isset($attemptMap[$uid][$eid]) || $score > $attemptMap[$uid][$eid]['score']) {
                 $attemptMap[$uid][$eid] = [
+                    'attemptId' => $ea->getId(),
                     'score' => $score,
                     'maxScore' => $maxScore,
                     'passed' => $passed,
+                    'answers' => $ea->getAnswers(),
+                    'feedbackTeacher' => $ea->getFeedbackTeacher(),
+                    'feedbackStudent' => $ea->getFeedbackStudent(),
                 ];
             }
         }
@@ -149,12 +163,17 @@ final class TeacherStudentStatsController
 
                     $evalStats[] = [
                         'id' => $eid,
+                        'attemptId' => $hasAttempt ? $attemptMap[$uid][$eid]['attemptId'] : null,
                         'title' => $eMeta['title'],
                         'pointsReward' => $eMeta['pointsReward'],
                         'attempted' => $hasAttempt,
                         'score' => $score,
                         'maxScore' => $maxScore,
                         'passed' => $passed,
+                        'questions' => $eMeta['questions'] ?? [],
+                        'answers' => $hasAttempt ? $attemptMap[$uid][$eid]['answers'] : [],
+                        'feedbackTeacher' => $hasAttempt ? $attemptMap[$uid][$eid]['feedbackTeacher'] : null,
+                        'feedbackStudent' => $hasAttempt ? $attemptMap[$uid][$eid]['feedbackStudent'] : null,
                     ];
                 }
 

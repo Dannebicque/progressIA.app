@@ -31,6 +31,7 @@ class Question
 {
     public const TYPE_QCM = 'qcm';
     public const TYPE_FREE = 'free';
+    public const TYPE_FILE = 'file';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -44,9 +45,9 @@ class Question
     #[Groups(['question:write'])]
     private ?Evaluation $evaluation = null;
 
-    /** qcm | free */
+    /** qcm | free | file */
     #[ORM\Column(length: 10, options: ['default' => 'qcm'])]
-    #[Assert\Choice(choices: [self::TYPE_QCM, self::TYPE_FREE])]
+    #[Assert\Choice(choices: [self::TYPE_QCM, self::TYPE_FREE, self::TYPE_FILE])]
     #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'question:read', 'question:write'])]
     private string $type = self::TYPE_QCM;
 
@@ -67,6 +68,10 @@ class Question
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     #[Groups(['course:read', 'eval:read', 'eval:admin', 'question:read', 'question:write'])]
     private int $position = 0;
+
+    #[ORM\Column(options: ['default' => false])]
+    #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'question:read', 'question:write'])]
+    private bool $fileRequired = false;
 
     /** @var Collection<int, Choice> */
     #[ORM\OneToMany(targetEntity: Choice::class, mappedBy: 'question', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -152,6 +157,18 @@ class Question
     public function setPosition(int $position): static
     {
         $this->position = $position;
+
+        return $this;
+    }
+
+    public function isFileRequired(): bool
+    {
+        return $this->fileRequired;
+    }
+
+    public function setFileRequired(bool $fileRequired): static
+    {
+        $this->fileRequired = $fileRequired;
 
         return $this;
     }

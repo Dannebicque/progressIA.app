@@ -37,6 +37,12 @@ class EvaluationAttempt
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $feedbackTeacher = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $feedbackStudent = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -124,5 +130,29 @@ class EvaluationAttempt
     public function getCreatedAt(): ?\DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getFeedbackTeacher(): ?string
+    {
+        return $this->feedbackTeacher;
+    }
+
+    public function setFeedbackTeacher(?string $feedbackTeacher): static
+    {
+        $this->feedbackTeacher = $feedbackTeacher;
+
+        return $this;
+    }
+
+    public function getFeedbackStudent(): ?string
+    {
+        return $this->feedbackStudent;
+    }
+
+    public function setFeedbackStudent(?string $feedbackStudent): static
+    {
+        $this->feedbackStudent = $feedbackStudent;
+
+        return $this;
     }
 }

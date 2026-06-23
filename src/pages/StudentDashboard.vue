@@ -109,18 +109,56 @@
                         <p v-if="!badges.length" class="text-sm text-muted-foreground">Aucun badge pour le moment.</p>
                     </CardContent>
                 </Card>
+
+                <!-- AI Feedback Widget -->
+                <Card v-if="evalsWithFeedback.length">
+                    <CardHeader>
+                        <CardTitle class="text-sm font-semibold flex items-center gap-1.5 text-violet-600 dark:text-violet-400">
+                            <IconSparkles class="size-4 animate-pulse" />
+                            <span>Derniers retours IA</span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent class="space-y-3">
+                        <div v-for="ev in evalsWithFeedback" :key="ev.evaluation" class="p-3 border rounded-xl bg-violet-50/5 hover:bg-violet-50/10 cursor-pointer transition flex flex-col gap-1" @click="openFeedback(ev)">
+                            <div class="font-semibold text-xs text-foreground line-clamp-1">{{ getEvalTitle(ev.evaluation) }}</div>
+                            <div class="text-[10px] text-muted-foreground flex justify-between items-center mt-1">
+                                <span>Score : {{ ev.score }} / {{ ev.maxScore }}</span>
+                                <span class="text-violet-600 dark:text-violet-400 font-bold hover:underline">Lire l'avis →</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </aside>
         </div>
+
+        <!-- AI Feedback Dialog -->
+        <Dialog :open="isAIModalOpen" @update:open="(v: any) => (isAIModalOpen = v)">
+            <DialogContent class="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                        <IconBrain class="size-5" />
+                        <span>Retour IA — {{ selectedEval?.title }}</span>
+                    </DialogTitle>
+                    <DialogDescription>
+                        Avis rédigé par l'intelligence artificielle sur votre tentative.
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <div v-if="selectedEval" class="py-2">
+                    <EvaluationPlayer :evaluation="selectedEval" />
+                </div>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { IconStar, IconChartBar, IconSearch, IconSearchOff } from '@tabler/icons-vue'
+import { IconStar, IconChartBar, IconSearch, IconSearchOff, IconSparkles, IconBrain } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useCoursesStore } from '@/stores/courses'
-import { useGamificationStore } from '@/stores/gamification'
+import { useGamificationStore, type EvalProgress } from '@/stores/gamification'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -128,6 +166,14 @@ import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import EvaluationPlayer from '@/components/EvaluationPlayer.vue'
 
 const store = useCoursesStore()
 const gam = useGamificationStore()
@@ -135,6 +181,42 @@ const auth = useAuthStore()
 
 const points = computed(() => auth.user?.points ?? 0)
 const badges = computed(() => auth.user?.badges || [])
+
+// AI Feedback Dialog state
+const isAIModalOpen = ref(false)
+const selectedEval = ref<Record<string, unknown> | null>(null)
+
+const evalsWithFeedback = computed(() => {
+    return gam.evaluations.filter((e) => !!e.feedbackStudent)
+})
+
+function findEvaluation(evalId: number) {
+    for (const c of store.courses) {
+        for (const s of c.sessions || []) {
+            for (const ch of s.chapters || []) {
+                for (const p of ch.pages || []) {
+                    if (p.type === 'evaluation' && p.data && Number(p.data.id) === Number(evalId)) {
+                        return p.data
+                    }
+                }
+            }
+        }
+    }
+    return null
+}
+
+function getEvalTitle(evalId: number): string {
+    const evalObj = findEvaluation(evalId)
+    return evalObj?.title || `Évaluation #${evalId}`
+}
+
+function openFeedback(progressEntry: EvalProgress) {
+    const evalObj = findEvaluation(progressEntry.evaluation)
+    if (evalObj) {
+        selectedEval.value = evalObj as Record<string, unknown>
+        isAIModalOpen.value = true
+    }
+}
 
 // Filter and Pagination State
 const q = ref('')
@@ -150,6 +232,7 @@ watch([q, category, level], () => {
 
 const filteredCourses = computed(() => {
     const term = q.value.trim().toLowerCase()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return store.courses.filter((c: any) => {
         if (c.visible === false) return false
         if (category.value !== 'all' && (c.category || 'other') !== category.value) return false

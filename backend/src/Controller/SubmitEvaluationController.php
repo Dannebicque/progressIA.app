@@ -128,6 +128,13 @@ final class SubmitEvaluationController
             return [$ok, $ok ? $question->getPoints() : 0];
         }
 
+        if (Question::TYPE_FILE === $question->getType()) {
+            $file = trim((string) ($submitted['file'] ?? ''));
+            $ok = '' !== $file;
+
+            return [$ok, $ok ? $question->getPoints() : 0];
+        }
+
         // QCM: exact match of the correct choice set
         $correctIds = $question->correctChoiceIds();
         sort($correctIds);

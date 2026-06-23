@@ -22,6 +22,7 @@
                     <SelectContent>
                         <SelectItem value="qcm">QCM</SelectItem>
                         <SelectItem value="free">Réponse libre</SelectItem>
+                        <SelectItem value="file">Dépôt de fichier</SelectItem>
                     </SelectContent>
                 </Select>
                 <Input type="number" min="1" class="w-20" :model-value="q.points" @update:model-value="(v: any) => patchQuestion(q, { points: Number(v) })" />

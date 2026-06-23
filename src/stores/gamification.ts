@@ -8,6 +8,8 @@ export interface EvalProgress {
   score: number
   maxScore: number
   passed: boolean
+  feedbackStudent?: string | null
+  answers?: Array<Record<string, unknown>>
 }
 
 interface CompleteResult {
@@ -59,7 +61,7 @@ export const useGamificationStore = defineStore('gamification', {
     async submitEvaluation(evaluationId: number | string, answers: any[]): Promise<SubmitResult> {
       const res = await api.post<SubmitResult>(`/api/evaluations/${evaluationId}/submit`, { answers })
       const idx = this.evaluations.findIndex((e) => Number(e.evaluation) === Number(evaluationId))
-      const entry: EvalProgress = { evaluation: Number(evaluationId), score: res.score, maxScore: res.maxScore, passed: res.passed }
+      const entry: EvalProgress = { evaluation: Number(evaluationId), score: res.score, maxScore: res.maxScore, passed: res.passed, answers }
       const current = idx === -1 ? undefined : this.evaluations[idx]
       if (!current) this.evaluations.push(entry)
       else if (res.score > current.score) this.evaluations[idx] = entry

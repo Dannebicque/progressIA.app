@@ -10,6 +10,8 @@ use App\Entity\Page;
 use App\Entity\Question;
 use App\Entity\Session;
 use App\Entity\User;
+use App\Entity\PageCompletion;
+use App\Entity\EvaluationAttempt;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -22,6 +24,8 @@ class AppFixtures extends Fixture
         'maxFiles' => 1,
     ];
 
+    private ?User $demoStudent = null;
+
     public function __construct(private readonly UserPasswordHasherInterface $hasher)
     {
     }
@@ -32,6 +36,10 @@ class AppFixtures extends Fixture
         $this->loadMockCourses($manager);
         $this->loadDemoCourses($manager);
         $this->loadBatmanCourse($manager);
+
+        $manager->flush();
+
+        $this->seedDemoStudentProgress($manager);
 
         $manager->flush();
     }
@@ -51,6 +59,7 @@ class AppFixtures extends Fixture
             ->setStudentInstitution('IUT de Bordeaux');
         $student->setPassword($this->hasher->hashPassword($student, 'student'));
         $manager->persist($student);
+        $this->demoStudent = $student;
     }
 
     private function loadMockCourses(ObjectManager $manager): void
@@ -127,6 +136,42 @@ class AppFixtures extends Fixture
             $manager->persist($p);
         }
         $this->addVueEvaluation($manager, $ch);
+
+        // Séance 2 — Projet et Rendu (Vue 3)
+        $s2 = (new Session())->setTitle('Séance 2 — Projet et Rendu')->setPitch('Rendu final du projet')->setPosition(1)->setRenderConfig(self::DEFAULT_RENDER_CONFIG);
+        $front->addSession($s2);
+        $manager->persist($s2);
+        $ch2 = (new Chapter())->setTitle('Rendu final')->setPosition(0);
+        $s2->addChapter($ch2);
+        $manager->persist($ch2);
+
+        $evalProj = (new Evaluation())->setTitle('Rendu Final du Projet Vue 3')->setDescription('Déposez vos livrables de projet.')->setPointsReward(20)->setPosition(0);
+        $ch2->addEvaluation($evalProj);
+        $manager->persist($evalProj);
+
+        $qProj1 = (new Question())->setType(Question::TYPE_FREE)->setStatement('Déposez votre rapport de projet en PDF.')->setPoints(10)->setPosition(0)->setFileRequired(true);
+        $evalProj->addQuestion($qProj1);
+        $manager->persist($qProj1);
+
+        $qProj2 = (new Question())->setType(Question::TYPE_FREE)->setStatement('Déposez l\'archive ZIP de votre code source.')->setPoints(10)->setPosition(1)->setFileRequired(true);
+        $evalProj->addQuestion($qProj2);
+        $manager->persist($qProj2);
+
+        // Séance 3 — Exercices Pratiques (Vue 3, empty example)
+        $s3 = (new Session())->setTitle('Séance 3 — Exercices Pratiques')->setPitch('Exercices de synthèse')->setPosition(2)->setRenderConfig(self::DEFAULT_RENDER_CONFIG);
+        $front->addSession($s3);
+        $manager->persist($s3);
+        $ch3 = (new Chapter())->setTitle('Exercice pratique')->setPosition(0);
+        $s3->addChapter($ch3);
+        $manager->persist($ch3);
+
+        $evalEx = (new Evaluation())->setTitle('Exercice — Intégration de maquette')->setDescription('Déposez votre exercice d\'intégration.')->setPointsReward(15)->setPosition(0);
+        $ch3->addEvaluation($evalEx);
+        $manager->persist($evalEx);
+
+        $qEx = (new Question())->setType(Question::TYPE_FREE)->setStatement('Déposez votre intégration HTML/CSS en format ZIP.')->setPoints(5)->setPosition(0)->setFileRequired(true);
+        $evalEx->addQuestion($qEx);
+        $manager->persist($qEx);
  
         // FULLSTACK course
         $full = (new Course())
@@ -190,7 +235,7 @@ class AppFixtures extends Fixture
             $manager->persist($c);
         }
 
-        $q2 = (new Question())->setType(Question::TYPE_FREE)->setStatement('À quoi sert une prop dans un composant ?')->setPoints(1)->setPosition(1);
+        $q2 = (new Question())->setType(Question::TYPE_FREE)->setStatement('À quoi sert une prop dans un composant ?')->setPoints(1)->setPosition(1)->setFileRequired(true);
         $eval->addQuestion($q2);
         $manager->persist($q2);
     }
@@ -433,5 +478,116 @@ MD);
         $m->persist($q);
 
         return $q;
+    }
+
+    private function seedDemoStudentProgress(ObjectManager $manager): void
+    {
+        if (!$this->demoStudent) {
+            return;
+        }
+
+        // Find the Vue 3 course
+        $course = $manager->getRepository(Course::class)->findOneBy(['title' => 'Vue 3 — Composants & réactivité']);
+        if (!$course) {
+            return;
+        }
+
+        // Let's complete the first page
+        $session = $course->getSessions()->first();
+        if ($session) {
+            $chapter = $session->getChapters()->first();
+            if ($chapter) {
+                $pages = $chapter->getPages();
+                if ($pages->count() > 0) {
+                    $firstPage = $pages->first();
+                    $completion = (new PageCompletion())
+                        ->setUser($this->demoStudent)
+                        ->setPage($firstPage);
+                    $manager->persist($completion);
+                }
+
+                // Let's add the evaluation attempt
+                $eval = $chapter->getEvaluations()->first();
+                if ($eval) {
+                    $q1 = $eval->getQuestions()->get(0);
+                    $q2 = $eval->getQuestions()->get(1);
+
+                    $answers = [];
+                    if ($q1) {
+                        $correctChoices = [];
+                        foreach ($q1->getChoices() as $choice) {
+                            if ($choice->isCorrect()) {
+                                $correctChoices[] = $choice->getId();
+                            }
+                        }
+                        $answers[] = [
+                            'question' => $q1->getId(),
+                            'choices' => $correctChoices
+                        ];
+                    }
+                    if ($q2) {
+                        $answers[] = [
+                            'question' => $q2->getId(),
+                            'text' => 'Une prop sert à passer des données de haut en bas (du parent au composant enfant).',
+                            'file' => 'copie_rendu_vue3.pdf' // Simulate a deposited document file name!
+                        ];
+                    }
+
+                    $attempt = (new EvaluationAttempt())
+                        ->setUser($this->demoStudent)
+                        ->setEvaluation($eval)
+                        ->setScore(3)
+                        ->setMaxScore(3)
+                        ->setPassed(true)
+                        ->setAnswers($answers);
+
+                    $manager->persist($attempt);
+                }
+            }
+        }
+
+        // Séance 2 attempt
+        $sessions = $course->getSessions();
+        if ($sessions->count() >= 2) {
+            $session2 = $sessions->get(1);
+            if ($session2) {
+                $chapter2 = $session2->getChapters()->first();
+                if ($chapter2) {
+                    $evalProj = $chapter2->getEvaluations()->first();
+                    if ($evalProj) {
+                        $qProj1 = $evalProj->getQuestions()->get(0);
+                        $qProj2 = $evalProj->getQuestions()->get(1);
+
+                        $answersProj = [];
+                        if ($qProj1) {
+                            $answersProj[] = [
+                                'question' => $qProj1->getId(),
+                                'text' => 'Ci-joint le rapport détaillé au format PDF contenant l\'analyse fonctionnelle.',
+                                'file' => 'rapport_projet_final.pdf'
+                            ];
+                        }
+                        if ($qProj2) {
+                            $answersProj[] = [
+                                'question' => $qProj2->getId(),
+                                'text' => 'Code source complet du projet Vue 3 avec README.',
+                                'file' => 'code_source_v1.zip'
+                            ];
+                        }
+
+                        $attemptProj = (new EvaluationAttempt())
+                            ->setUser($this->demoStudent)
+                            ->setEvaluation($evalProj)
+                            ->setScore(18)
+                            ->setMaxScore(20)
+                            ->setPassed(true)
+                            ->setAnswers($answersProj)
+                            ->setFeedbackTeacher('Très bon travail. Le rapport est propre et le code source respecte bien la structure vue en cours.')
+                            ->setFeedbackStudent('Félicitations pour ton rendu ! Ton rapport est très détaillé et structuré. L\'implémentation de la réactivité est correcte.');
+
+                        $manager->persist($attemptProj);
+                    }
+                }
+            }
+        }
     }
 }
