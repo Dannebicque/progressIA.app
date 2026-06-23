@@ -1,61 +1,137 @@
 <template>
-    <header class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white">
-        <div class="w-full px-6 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <router-link to="/" class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center font-bold">PF</div>
-                    <div class="hidden sm:block">
-                        <div class="font-semibold">PedagoFlow</div>
-                        <div class="text-xs opacity-80">Concevez. Suivez. Gamifiez.</div>
-                    </div>
-                </router-link>
-            </div>
-
-            <div class="flex-1 mx-6 hidden md:flex items-center">
-                <div class="relative w-full max-w-lg">
-                    <input placeholder="Rechercher un cours, une séance..."
-                        class="w-full rounded-full py-2 px-4 text-sm bg-white/20 placeholder-white/70 focus:outline-none" />
-                    <button
-                        class="absolute right-1 top-1/2 -translate-y-1/2 bg-white/10 px-3 py-1 rounded-full text-sm">Rechercher</button>
+    <header class="bg-brand-gradient text-white shadow-sm">
+        <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+            <!-- Brand -->
+            <RouterLink to="/" class="flex items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+                <div class="grid size-10 place-items-center rounded-xl bg-white/20 font-bold backdrop-blur">
+                    <img src="@/assets/logos/logo_icone.png" alt="ProgressIA" class="w-8 h-8" />
                 </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <router-link to="/courses"
-                    class="hidden sm:inline text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Catalogue</router-link>
-                <router-link v-if="auth.user?.role==='teacher'" to="/backoffice"
-                    class="hidden sm:inline text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Back-office</router-link>
-                <router-link to="/dashboard/student"
-                    class="hidden sm:inline text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Mon
-                    tableau</router-link>
-
-                <div class="relative">
-                    <template v-if="auth.user">
-                        <button @click="toggleMenu"
-                            class="w-9 h-9 rounded-full bg-white text-indigo-700 flex items-center justify-center">{{ auth.user.name.charAt(0).toUpperCase() }}</button>
-                        <div v-if="menu" class="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded shadow py-2 z-20">
-                            <div class="px-3 py-2 text-sm">Connecté · {{ auth.user.role }}</div>
-                            <a class="block px-3 py-2 text-sm hover:bg-gray-100" href="#">Mon profil</a>
-                            <a @click.prevent="logout" class="block px-3 py-2 text-sm hover:bg-gray-100" href="#">Se déconnecter</a>
-                        </div>
-                    </template>
-                    <template v-else>
-                        <router-link to="/login" class="px-3 py-1 bg-white text-indigo-700 rounded">Connexion</router-link>
-                    </template>
+                <div class="hidden sm:block leading-tight">
+                    <div class="font-semibold tracking-tight">ProgressIA</div>
+                    <div class="text-xs text-white/80">Concevez. Suivez. Gamifiez.</div>
                 </div>
+            </RouterLink>
+
+            <!-- Search -->
+            <form class="relative hidden md:flex flex-1 max-w-lg" @submit.prevent="submitSearch">
+                <IconSearch class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/70" />
+                <input v-model="q" type="search" placeholder="Rechercher un cours, une séance…"
+                    class="w-full rounded-full bg-white/15 py-2 pl-9 pr-4 text-sm text-white placeholder-white/70 outline-none ring-1 ring-white/20 transition focus:bg-white/25 focus:ring-2 focus:ring-white/70" />
+            </form>
+
+            <!-- Nav + account -->
+            <div class="flex items-center gap-2">
+                <RouterLink to="/courses" :class="navLink">Catalogue</RouterLink>
+                <RouterLink v-if="auth.isTeacher()" to="/backoffice" :class="navLink">Back-office</RouterLink>
+                <RouterLink to="/dashboard/student" :class="navLink">Mon tableau</RouterLink>
+
+                <button @click="toggleTheme" class="inline-flex size-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/15 outline-none focus-visible:ring-2 focus-visible:ring-white/70 cursor-pointer" aria-label="Toggle theme">
+                    <IconSun v-if="isDark" class="size-5" />
+                    <IconMoon v-else class="size-5" />
+                </button>
+
+                <template v-if="auth.user">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            class="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+                            <Avatar class="size-9 ring-2 ring-white/40">
+                                <AvatarImage v-if="auth.user?.avatar" :src="`${apiBaseUrl}/${auth.user.avatar}`" alt="Avatar" class="object-cover" />
+                                <AvatarFallback class="bg-white font-semibold text-indigo-700">
+                                    {{ initials }}
+                                </AvatarFallback>
+                            </Avatar>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-56">
+                            <DropdownMenuLabel class="flex flex-col">
+                                <span class="truncate">{{ auth.user.name }}</span>
+                                <span class="text-xs font-normal text-muted-foreground">
+                                    {{ auth.isTeacher() ? 'Enseignant' : 'Étudiant' }}
+                                </span>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem as-child>
+                                <RouterLink to="/dashboard/student" class="cursor-pointer">
+                                    <IconLayoutDashboard class="size-4" /> Mon tableau
+                                </RouterLink>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem as-child>
+                                <RouterLink :to="auth.isTeacher() ? '/stats/teacher' : '/stats/student'" class="cursor-pointer">
+                                    <IconChartBar class="size-4" /> Statistiques
+                                </RouterLink>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem as-child>
+                                <RouterLink to="/account" class="cursor-pointer">
+                                    <IconUserCog class="size-4" /> Mon compte
+                                </RouterLink>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem variant="destructive" class="cursor-pointer" @select="logout">
+                                <IconLogout class="size-4" /> Se déconnecter
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </template>
+                <template v-else>
+                    <RouterLink to="/login">
+                        <Button size="sm" class="rounded-full bg-white text-indigo-700 hover:bg-white/90">Connexion</Button>
+                    </RouterLink>
+                </template>
             </div>
         </div>
     </header>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useAuthStore } from '../stores/auth'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { IconSearch, IconLogout, IconLayoutDashboard, IconChartBar, IconUserCog, IconSun, IconMoon } from '@tabler/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
+const isDark = ref(false)
+
+onMounted(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+})
+
+function toggleTheme() {
+    isDark.value = !isDark.value
+    if (isDark.value) {
+        document.documentElement.classList.add('dark')
+        localStorage.setItem('theme', 'dark')
+    } else {
+        document.documentElement.classList.remove('dark')
+        localStorage.setItem('theme', 'light')
+    }
+}
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const auth = useAuthStore()
-const menu = ref(false)
-function toggleMenu() { menu.value = !menu.value }
-function logout() { auth.logout(); location.href = '/' }
+const router = useRouter()
+const q = ref('')
+const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+
+const navLink =
+    'hidden sm:inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium text-white/90 transition hover:bg-white/15 outline-none focus-visible:ring-2 focus-visible:ring-white/70'
+
+const initials = computed(() => (auth.user?.name || '?').trim().charAt(0).toUpperCase())
+
+function submitSearch() {
+    router.push({ path: '/courses', query: q.value ? { q: q.value } : {} })
+}
+
+function logout() {
+    auth.logout()
+    router.push('/')
+}
 </script>
 
 <style scoped></style>

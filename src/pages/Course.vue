@@ -1,144 +1,181 @@
 <template>
     <AppLayout>
-        <div v-if="course">
-            <section class="rounded-xl mb-6 overflow-hidden">
-                <div :style="{ background: `linear-gradient(90deg, ${course.accentColor}22, ${course.accentColor}55)` }"
-                    class="p-6">
-                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div v-if="course" class="space-y-6">
+            <!-- header -->
+            <Card class="overflow-hidden pt-0">
+                <div class="h-2 w-full" :style="{ background: accent }"></div>
+                <CardContent class="flex flex-col gap-6 pt-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex items-start gap-4">
+                        <div class="grid size-16 shrink-0 place-items-center rounded-2xl text-white"
+                            :style="{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }">
+                            <IconSchool class="size-8" />
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h1 class="text-2xl font-bold tracking-tight">{{ course.title }}</h1>
+                                <Badge v-if="course.category && course.category !== 'other'" variant="secondary" class="uppercase">{{ course.category }}</Badge>
+                            </div>
+                            <p class="text-sm text-muted-foreground">{{ course.theme }}<span v-if="course.context"> · {{ course.context }}</span></p>
+                            <p class="mt-2 max-w-2xl text-sm">{{ course.scenario }}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-auto">
+                        <Stat label="Séances" :value="visibleSessions.length" />
+                        <Stat label="Pages" :value="totalPages" />
+                        <Stat label="Pts à gagner" :value="totalPoints" />
+                        <Stat label="Progression" :value="`${pct}%`" :accent="accent" />
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div class="grid gap-6 lg:grid-cols-3">
+                <!-- sessions -->
+                <div class="space-y-3 lg:col-span-2">
+                    <!-- Narrative / Scenario Bubble -->
+                    <div v-if="course.scenario" 
+                        class="relative overflow-hidden rounded-2xl border p-5"
+                        :style="{
+                            borderColor: accent + '33',
+                            background: `linear-gradient(to right, ${accent}14, ${accent}08, transparent)`
+                        }">
+                        <div class="absolute -right-6 -bottom-6 size-24 opacity-20 pointer-events-none" :style="{ color: accent }">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-full"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" /></svg>
+                        </div>
                         <div class="flex items-start gap-4">
-                            <div class="w-24 h-24 rounded-lg flex items-center justify-center"
-                                :style="{ background: `linear-gradient(135deg, ${course.accentColor}33, ${course.accentColor}66)` }">
-                                <svg class="w-10 h-10 text-indigo-700" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                        d="M12 20l9-5-9-5-9 5 9 5z" />
-                                </svg>
+                            <div class="grid size-12 shrink-0 place-items-center rounded-xl" :style="{ backgroundColor: accent + '1a' }">
+                                <IconSparkles class="size-6" :style="{ color: accent }" />
                             </div>
-                            <div>
-                                <h1 class="text-2xl font-bold">{{ course.title }}</h1>
-                                <p class="text-sm text-gray-600 mt-1">{{ course.theme }} · {{ course.context }}</p>
-                                <p class="text-sm text-gray-700 mt-3">{{ course.scenario }}</p>
-                            </div>
-                        </div>
-
-                        <div class="flex gap-4 w-full lg:w-auto">
-                            <div class="bg-white px-4 py-3 rounded-lg text-center shadow-sm">
-                                <div class="text-sm text-gray-500">Séances</div>
-                                <div class="font-semibold text-lg">{{ course.sessions.length }}</div>
-                            </div>
-                            <div class="bg-white px-4 py-3 rounded-lg text-center shadow-sm">
-                                <div class="text-sm text-gray-500">Durée</div>
-                                <div class="font-semibold text-lg">{{ totalDuration }} min</div>
-                            </div>
-                            <div :style="{ background: course.accentColor }"
-                                class="px-4 py-3 rounded-lg text-center text-white shadow-sm">
-                                <div class="text-sm">Points</div>
-                                <div class="font-semibold text-lg">{{ totalPoints }}</div>
-                            </div>
-                            <div class="bg-white px-4 py-3 rounded-lg text-center shadow-sm">
-                                <div class="text-sm text-gray-500">Progression</div>
-                                <div class="font-semibold text-lg">{{ pct }}%</div>
+                            <div class="space-y-1">
+                                <div class="text-xs font-semibold uppercase tracking-wider" :style="{ color: accent }">Le Contexte & L'Histoire</div>
+                                <p class="text-sm italic text-muted-foreground leading-relaxed">
+                                    « {{ course.scenario }} »
+                                </p>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            <div class="grid lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                    <div class="bg-white rounded-xl p-6 shadow">
-                        <h2 class="text-2xl font-bold">{{ course.title }}</h2>
-                        <p class="text-sm text-gray-600">{{ course.theme }} — {{ course.context }}</p>
-                        <p class="mt-2 text-gray-700">{{ course.scenario }}</p>
-                    </div>
-
-                    <div class="mt-6 space-y-3">
-                        <h3 class="text-lg font-semibold">Séances</h3>
-                        <div v-for="s in course.sessions" :key="s.id"
-                            :class="['rounded-lg p-4 shadow flex items-center justify-between', s.id === route.params.sid ? 'border-l-4' : '']"
-                            :style="s.id === route.params.sid ? { borderColor: course.accentColor } : {}">
-                            <div>
-                                <div class="font-medium">{{ s.title }}</div>
-                                <div class="text-sm text-gray-500">{{ s.chapters.length }} chapitres</div>
-                            </div>
+                    <h2 class="text-lg font-semibold tracking-tight">Séances</h2>
+                    <Card v-for="(s, i) in visibleSessions" :key="s.id">
+                        <CardContent class="flex items-center justify-between gap-4 py-4">
                             <div class="flex items-center gap-3">
-                                <router-link :to="`/course/${course.id}/session/${s.id}`"
-                                    :style="{ background: `linear-gradient(90deg, ${course.accentColor} 0%, ${course.accentColor}bb 100%)`, borderColor: course.accentColor }"
-                                    class="px-4 py-2 text-white rounded-full font-medium">Commencer</router-link>
+                                <div class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-sm font-semibold text-accent-foreground">{{ Number(i) + 1 }}</div>
+                                <div>
+                                    <div class="font-medium">{{ s.title }}</div>
+                                    <div class="text-sm text-muted-foreground">{{ pluralize(chapterCount(s), 'chapitre') }} · {{ pluralize(pageCount(s), 'page') }}</div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                            <div class="flex items-center gap-4">
+                                <!-- Progress Indicator -->
+                                <div v-if="auth.isAuthenticated && !auth.isTeacher()" class="hidden sm:block">
+                                    <span v-if="sessionPct(s) === 100" class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                        <svg class="size-3.5 fill-emerald-600" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.8-11.2a1 1 0 0 0-1.4-1.4L9 8.6 7.6 7.2a1 1 0 0 0-1.4 1.4l2.1 2.1a1 1 0 0 0 1.4 0l3.8-3.9Z" clip-rule="evenodd" /></svg>
+                                        Complété
+                                    </span>
+                                    <span v-else-if="sessionDonePageCount(s) > 0" class="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                                        {{ sessionDonePageCount(s) }} / {{ pageCount(s) }} pages
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
+                                        Pas commencé
+                                    </span>
+                                </div>
+                                
+                                <RouterLink :to="`/course/${course.id}/session/${s.id}`">
+                                    <Button size="sm">
+                                        <span v-if="auth.isAuthenticated && !auth.isTeacher()">
+                                            {{ sessionPct(s) === 100 ? 'Revoir' : (sessionDonePageCount(s) > 0 ? 'Continuer' : 'Commencer') }}
+                                        </span>
+                                        <span v-else>Commencer</span>
+                                        <IconArrowRight class="size-4 ml-1" />
+                                    </Button>
+                                </RouterLink>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card v-if="!visibleSessions.length" class="grid place-items-center py-10 text-center text-muted-foreground">
+                        Aucune séance pour ce cours.
+                    </Card>
                 </div>
 
-                <aside class="bg-white rounded-xl p-4 shadow">
-                    <h4 class="font-semibold">Progression</h4>
-                    <p class="text-sm text-gray-600 mt-2">Progression estimée pour l'utilisateur.</p>
-                    <div class="mt-4">
-                        <div class="flex justify-between text-sm text-gray-600"><span>Sessions complétées</span><span>{{
-                            completed }} / {{ course.sessions.length }}</span></div>
-                        <div class="w-full bg-gray-200 rounded-full h-3 mt-2">
-                            <div :style="{ width: pct + '%', background: course.accentColor }" class="h-3 rounded-full">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6">
-                        <h5 class="font-semibold">Badges</h5>
-                        <div class="mt-2 flex gap-2 flex-wrap">
-                            <div v-for="b in badges" :key="b.id"
-                                class="text-center text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded">{{ b.title }}
-                            </div>
-                            <div v-if="badges.length === 0" class="text-sm text-gray-500">Aucun badge pour le moment
-                            </div>
-                        </div>
-                    </div>
+                <!-- aside -->
+                <aside class="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-base">Ma progression</CardTitle>
+                            <CardDescription>{{ donePages }} / {{ totalPages }} {{ totalPages >= 2 ? 'pages terminées' : 'page terminée' }}</CardDescription>
+                        </CardHeader>
+                        <CardContent><Progress :model-value="pct" /></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader><CardTitle class="text-base">Mes badges</CardTitle></CardHeader>
+                        <CardContent class="flex flex-wrap gap-2">
+                            <Badge v-for="b in badges" :key="b.code" variant="secondary" class="gap-1">
+                                <span>{{ b.icon }}</span>{{ b.label }}
+                            </Badge>
+                            <p v-if="!badges.length" class="text-sm text-muted-foreground">Aucun badge pour le moment.</p>
+                        </CardContent>
+                    </Card>
                 </aside>
             </div>
         </div>
-        <div v-else>
-            <p>Cours introuvable</p>
-        </div>
+
+        <Card v-else class="grid place-items-center py-16 text-center text-muted-foreground">Cours introuvable.</Card>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
 import { computed } from 'vue'
-import AppLayout from '../components/AppLayout.vue'
-import { useCoursesStore } from '../stores/courses'
+import { useRoute } from 'vue-router'
+import { IconSchool, IconArrowRight, IconSparkles } from '@tabler/icons-vue'
+import AppLayout from '@/components/AppLayout.vue'
+import Stat from '@/components/StatPill.vue'
+import { pluralize } from '@/lib/format'
+import { useCoursesStore } from '@/stores/courses'
+import { useGamificationStore } from '@/stores/gamification'
+import { useAuthStore } from '@/stores/auth'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const route = useRoute()
 const store = useCoursesStore()
-const course = store.getCourse(route.params.id as string)
-const studentId = 'student1'
+const gam = useGamificationStore()
+const auth = useAuthStore()
 
-const completed = computed(() => {
-    if (!course) return 0
-    const p = store.getProgress(studentId, course.id)
-    let cnt = 0
-    for (const s of course.sessions) {
-        if (p[s.id]?.done) cnt++
-    }
-    return cnt
+const course = computed(() => store.getCourse(route.params.id as string))
+const visibleSessions = computed(() => {
+    if (!course.value?.sessions) return []
+    return course.value.sessions.filter((s: any) => s.visible !== false)
 })
+const accent = computed(() => course.value?.accentColor || '#7c3aed')
+const badges = computed(() => auth.user?.badges || [])
 
-const pct = computed(() => {
-    if (!course) return 0
-    return Math.round((completed.value / course.sessions.length) * 100)
-})
+function chapterCount(s: any) { return s.chapters?.length || 0 }
+function pageCount(s: any) { return (s.chapters || []).reduce((a: number, ch: any) => a + (ch.pages?.length || 0), 0) }
 
-const badges = computed(() => store.getBadges(studentId))
+function sessionDonePageCount(s: any) {
+    return (s.chapters || []).reduce((a: number, ch: any) => {
+        return a + (ch.pages || []).filter((p: any) => gam.isPageDone(p.id)).length
+    }, 0)
+}
 
-const totalDuration = computed(() => {
-    if (!course) return 0
-    // placeholder: assume 30 min per session
-    return course.sessions.length * 30
-})
+function sessionPct(s: any) {
+    const total = pageCount(s)
+    if (!total) return 0
+    return Math.round((sessionDonePageCount(s) / total) * 100)
+}
 
+const totalPages = computed(() => (course.value ? gam.coursePageIds(course.value).length : 0))
+const donePages = computed(() => (course.value ? gam.coursePageIds(course.value).filter((id) => gam.isPageDone(id)).length : 0))
+const pct = computed(() => (course.value ? gam.coursePct(course.value) : 0))
 const totalPoints = computed(() => {
-    if (!course) return 0
-    return course.sessions.length * 20
+    if (!course.value) return 0
+    let pts = 0
+    for (const s of course.value.sessions || [])
+        for (const ch of s.chapters || []) {
+            for (const p of ch.pages || []) pts += p.points || 0
+            for (const ev of ch.evaluations || []) pts += ev.pointsReward || 0
+        }
+    return pts
 })
 </script>
-
-<style scoped></style>

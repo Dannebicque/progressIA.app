@@ -5,16 +5,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
+# Dependencies / build output (frontend)
 node_modules
-.DS_Store
 dist
 dist-ssr
 coverage
 *.local
 
-# Editor directories and files
+# Vite / TS
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -24,16 +27,5 @@ coverage
 *.sln
 *.sw?
 
-*.tsbuildinfo
-
-.eslintcache
-
-# Cypress
-/cypress/videos/
-/cypress/screenshots/
-
-# Vitest
-__screenshots__/
-
-# Vite
-*.timestamp-*-*.mjs
+# NOTE: the Symfony backend has its own backend/.gitignore
+# (ignores backend/vendor, backend/var, backend/.env.local, JWT keys).

@@ -1,287 +1,233 @@
 <template>
     <AppLayout>
-        <div v-if="course && session" class="grid lg:grid-cols-3 gap-6">
-            <main class="lg:col-span-2 space-y-6">
-                <div class="bg-white rounded-xl p-6 shadow-lg"
-                    :style="{ borderTop: '6px solid ' + (course.accentColor || '#7c3aed') }">
-                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                        <div>
-                            <h2 class="text-2xl font-bold">{{ session.title }}</h2>
-                            <div class="text-sm text-gray-500">{{ course.title }}</div>
-                            <div class="text-sm text-gray-700 mt-2">{{ session.description || course.scenario }}</div>
+        <div v-if="course && session" class="grid gap-6 lg:grid-cols-3">
+            <main class="space-y-4 lg:col-span-2">
+                <!-- header -->
+                <Card class="overflow-hidden pt-0">
+                    <div class="h-1.5 w-full" :style="{ background: accent }"></div>
+                    <CardContent class="pt-5">
+                        <RouterLink :to="`/course/${course.id}`"
+                            class="text-xs text-muted-foreground hover:text-primary">← {{ course.title }}</RouterLink>
+                        <h1 class="mt-1 text-2xl font-bold tracking-tight">{{ session.title }}</h1>
+                        <p v-if="currentStep" class="mt-1 text-sm text-muted-foreground">
+                            Étape {{ stepIndex + 1 }} / {{ steps.length }} · {{ currentStep.chapter }}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <!-- Narrative / Scenario Bubble -->
+                <div v-if="session.pitch" 
+                    class="relative overflow-hidden rounded-2xl border p-5"
+                    :style="{
+                        borderColor: accent + '33',
+                        background: `linear-gradient(to right, ${accent}14, ${accent}08, transparent)`
+                    }">
+                    <div class="absolute -right-6 -bottom-6 size-24 opacity-20 pointer-events-none" :style="{ color: accent }">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-full"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" /></svg>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="grid size-12 shrink-0 place-items-center rounded-xl" :style="{ backgroundColor: accent + '1a' }">
+                            <IconSparkles class="size-6" :style="{ color: accent }" />
                         </div>
-                        <div class="flex items-center gap-3">
-                            <div class="text-sm text-gray-600 text-center">
-                                <div>Progression séance</div>
-                                <div class="w-40 mt-2">
-                                    <div class="w-full bg-gray-200 rounded-full h-3">
-                                        <div :style="{ width: sessionPct + '%', background: course.accentColor }"
-                                            class="h-3 rounded-full"></div>
-                                    </div>
-                                </div>
+                        <div class="space-y-1">
+                            <div class="text-xs font-semibold uppercase tracking-wider" :style="{ color: accent }">La Trame & Objectif de la Séance</div>
+                            <p class="text-sm italic text-muted-foreground leading-relaxed">
+                                « {{ session.pitch }} »
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- current step -->
+                <template v-if="currentStep">
+                    <!-- page -->
+                    <Card v-if="currentStep.type === 'page'">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0">
+                            <CardTitle>{{ currentStep.data.title }}</CardTitle>
+                            <Badge v-if="gam.isPageDone(currentStep.id)" variant="default" class="gap-1">
+                                <IconCheck class="size-3.5" /> Terminé
+                            </Badge>
+                        </CardHeader>
+                        <CardContent>
+                            <MarkdownViewer :source="currentStep.data.content" />
+                            <div class="mt-4">
+                                <Button v-if="!gam.isPageDone(currentStep.id)" @click="complete(currentStep.data)">
+                                    <IconCircleCheck class="size-4" /> Marquer comme terminé (+{{
+                                    currentStep.data.points }} pts)
+                                </Button>
+                                <span v-else class="text-sm text-emerald-600">Page validée ✓</span>
                             </div>
-                            <div class="hidden lg:flex gap-2">
-                                <router-link v-if="prevSession" :to="`/course/${course.id}/session/${prevSession.id}`"
-                                    class="px-3 py-2 rounded-full text-sm"
-                                    :style="{ border: '1px solid ' + course.accentColor, color: course.accentColor }">←
-                                    Précédent</router-link>
-                                <router-link v-if="nextSession" :to="`/course/${course.id}/session/${nextSession.id}`"
-                                    class="px-4 py-2 rounded-full text-white text-sm"
-                                    :style="{ background: `linear-gradient(90deg, ${course.accentColor} 0%, ${course.accentColor}bb 100%)` }">Suivant
-                                    →</router-link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                        </CardContent>
+                    </Card>
 
-                <div v-if="session.chapters.length > 1" class="bg-white rounded p-4 shadow">
-                    <h4 class="font-medium mb-2">Plan de la séance</h4>
-                    <div class="flex flex-wrap gap-2">
-                        <button v-for="ch in session.chapters" :key="ch.id" @click="scrollTo(ch.id)"
-                            :style="{ borderColor: course.accentColor, color: course.accentColor }"
-                            class="text-sm border px-3 py-1 rounded">{{ ch.title }}</button>
-                    </div>
-                </div>
+                    <!-- evaluation -->
+                    <EvaluationPlayer v-else :evaluation="currentStep.data" />
+                </template>
 
-                <div class="space-y-6">
-                    <article v-for="ch in session.chapters" :key="ch.id" :id="ch.id"
-                        class="bg-white p-6 rounded shadow prose max-w-none">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-semibold text-lg">{{ ch.title }}</h4>
-                            <a @click.prevent="scrollToTop" href="#" class="text-sm text-gray-500">Haut ↑</a>
-                        </div>
-                        <MarkdownViewer :source="ch.content" />
-                    </article>
-                </div>
-
-                <div v-if="session.renderConfig?.allowUpload" class="bg-white p-4 rounded shadow">
-                    <div>
-                        <h4 class="font-semibold">Rendu</h4>
-                        <p class="text-sm text-gray-600">Déposez votre fichier ici.</p>
-                    </div>
-                    <div class="mt-3 flex items-center gap-3">
-                        <label
-                            class="inline-flex items-center px-4 py-2 text-white rounded-full cursor-pointer relative overflow-hidden shadow-sm"
-                            :style="{ background: `linear-gradient(90deg, ${course.accentColor} 0%, ${course.accentColor}bb 100%)` }">
-                            <input :accept="uploadAccept" :multiple="uploadMultiple" type="file" class="hidden"
-                                @change="onFile" />
-                            <span>Déposer un fichier</span>
-                        </label>
-                        <button @click="completeSession" class="px-4 py-2 text-white rounded-full"
-                            :style="{ background: '#10b981' }">Marquer comme terminé</button>
-                    </div>
-                    <div class="mt-2 text-sm text-gray-600">
-                        <div v-if="session.renderConfig && session.renderConfig.allowedTypes">
-                            Types autorisés:
-                            <span v-for="t in session.renderConfig.allowedTypes" :key="t"
-                                class="inline-block px-2 py-0.5 mr-2 bg-gray-100 rounded text-xs">{{ t }}</span>
-                        </div>
-                    </div>
+                <!-- step navigation -->
+                <div class="flex items-center justify-between">
+                    <Button variant="outline" :disabled="stepIndex === 0" @click="go(stepIndex - 1)">
+                        <IconArrowLeft class="size-4" /> Précédent
+                    </Button>
+                    <Button v-if="stepIndex < steps.length - 1" @click="go(stepIndex + 1)">
+                        Suivant
+                        <IconArrowRight class="size-4" />
+                    </Button>
+                    <RouterLink v-else-if="nextSession" :to="`/course/${course.id}/session/${nextSession.id}`">
+                        <Button>Séance suivante
+                            <IconArrowRight class="size-4" />
+                        </Button>
+                    </RouterLink>
+                    <span v-else class="text-sm text-muted-foreground">Fin de la séance 🎉</span>
                 </div>
             </main>
 
+            <!-- sidebar: stepper -->
             <aside class="lg:col-span-1">
-                <div class="bg-white rounded-xl p-4 shadow sticky top-24">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-semibold">Contenu du cours</h4>
-                        <button class="lg:hidden text-sm px-2 py-1 rounded border" @click="tocOpen = !tocOpen"
-                            :style="{ borderColor: course.accentColor, color: course.accentColor }">{{ tocOpen ?
-                                'Masquer' : 'Sommaire' }}</button>
-                    </div>
-                    <div class="mt-3 space-y-2">
-                        <div v-show="tocOpen" class="mb-3">
-                            <h5 class="text-sm font-bold mb-2">Sommaire</h5>
-                            <ul class="text-sm space-y-1">
-                                <li v-for="ch in session.chapters" :key="ch.id">
-                                    <a href="#" @click.prevent="scrollTo(ch.id)"
-                                        :class="activeChapter === ch.id ? 'font-semibold' : ''"
-                                        :style="activeChapter === ch.id ? { color: course.accentColor } : {}">{{
-                                            ch.title }}</a>
-                                </li>
-                            </ul>
-                        </div>
+                <Card class="sticky top-24">
+                    <CardHeader>
+                        <CardTitle class="text-base">Sommaire</CardTitle>
+                        <CardDescription>{{ donePages }} / {{ totalPages }} {{ totalPages >= 2 ? 'pages terminées' :
+                            'page terminée'
+                            }}</CardDescription>
+                    </CardHeader>
+                    <CardContent class="space-y-4">
+                        <Progress :model-value="sessionPct" />
 
+                        <nav class="space-y-3">
+                            <div v-for="grp in grouped" :key="grp.chapter">
+                                <div class="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{{
+                                    grp.chapter
+                                    }}</div>
+                                <button v-for="st in grp.items" :key="st.key" @click="go(st.index)"
+                                    class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition"
+                                    :class="st.index === stepIndex ? 'bg-accent font-medium text-accent-foreground' : 'hover:bg-muted'">
+                                    <component :is="stepIcon(st)" class="size-4 shrink-0" :class="stepIconClass(st)" />
+                                    <span class="flex-1 truncate">{{ st.data.title }}</span>
+                                    <span v-if="st.type === 'eval' && gam.evalResult(st.id)"
+                                        class="text-xs text-muted-foreground">
+                                        {{ gam.evalResult(st.id)?.score }}/{{ gam.evalResult(st.id)?.maxScore }}
+                                    </span>
+                                </button>
+                            </div>
+                        </nav>
 
-
-                        <div class="mt-2">
-                            <h5 class="text-sm font-bold mb-2">Sections</h5>
+                        <Separator />
+                        <div>
+                            <div class="mb-2 text-sm font-medium">Séances du cours</div>
+                            <RouterLink v-for="s in course.sessions" :key="s.id"
+                                :to="`/course/${course.id}/session/${s.id}`"
+                                class="block rounded-md px-2 py-1.5 text-sm transition"
+                                :class="s.id === session.id ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-muted'">
+                                {{ s.title }}
+                            </RouterLink>
                         </div>
-                        <div v-for="s in course.sessions" :key="s.id" class="p-2 rounded-lg"
-                            :class="s.id === session.id ? '' : 'hover:bg-gray-50'"
-                            :style="s.id === session.id ? { backgroundColor: (course.accentColor + '1A'), borderLeft: '4px solid ' + course.accentColor } : {}">
-                            <router-link :to="`/course/${course.id}/session/${s.id}`" class="block">
-                                <div class="text-sm font-medium"
-                                    :style="s.id === session.id ? { color: course.accentColor } : {}">{{ s.title }}
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1">{{ s.chapters.length }} chapitres · {{ 20 }} pts
-                                </div>
-                            </router-link>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <h5 class="font-semibold">Actions</h5>
-                        <div class="mt-2 flex gap-2">
-                            <button @click="givePoints(10)" class="px-3 py-2 text-white rounded-full cta-anim"
-                                :style="{ background: course.accentColor }">+10 pts</button>
-                            <button @click="giveBadge" class="px-3 py-2 border rounded-full cta-anim"
-                                :style="{ borderColor: course.accentColor, color: course.accentColor }">Badge</button>
-                        </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </aside>
         </div>
-        <div v-else>
-            <p>Session introuvable</p>
-        </div>
-        <!-- Toasts are now global via AppLayout -->
+
+        <Card v-else class="grid place-items-center py-16 text-center text-muted-foreground">Séance introuvable.</Card>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import AppLayout from '../components/AppLayout.vue'
-import MarkdownViewer from '../components/MarkdownViewer.vue'
-import { useCoursesStore } from '../stores/courses'
-import { showToast } from '../composables/useToast'
+import { IconArrowLeft, IconArrowRight, IconCheck, IconCircleCheck, IconCircle, IconClipboardCheck, IconSparkles } from '@tabler/icons-vue'
+import AppLayout from '@/components/AppLayout.vue'
+import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import EvaluationPlayer from '@/components/EvaluationPlayer.vue'
+import { useCoursesStore } from '@/stores/courses'
+import { useGamificationStore } from '@/stores/gamification'
+import { showToast } from '@/composables/useToast'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Separator } from '@/components/ui/separator'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
+interface Step { key: string; index: number; type: 'page' | 'eval'; id: number; chapter: string; data: any }
 
 const route = useRoute()
 const store = useCoursesStore()
-const course = store.getCourse(route.params.id as string)
-const session = course?.sessions.find((s: any) => s.id === route.params.sid)
-const uploaded = ref(false)
-const tocOpen = ref(false)
-const activeChapter = ref<string | null>(null)
-let _observer: IntersectionObserver | null = null
+const gam = useGamificationStore()
 
-const studentId = 'student1'
+const course = computed(() => store.getCourse(route.params.id as string))
+const session = computed(() => course.value?.sessions.find((s: any) => String(s.id) === String(route.params.sid)))
+const accent = computed(() => course.value?.accentColor || '#7c3aed')
 
-const sessionProgress = computed(() => {
-    if (!session) return {}
-    const p = store.getProgress(studentId, course.id)
-    return p[session.id] || {}
-})
-
-const sessionPct = computed(() => {
-    if (!session) return 0
-    // simple heuristic: if sessionProgress.done true => 100
-    return sessionProgress.value.done ? 100 : 0
-})
-
-const uploadAccept = computed(() => {
-    if (!session || !session.renderConfig || !session.renderConfig.allowedTypes) return undefined
-    const types = session.renderConfig.allowedTypes as string[]
-    const map: Record<string, string> = {
-        image: 'image/*',
-        file: '',
-        code: '.php,.js,.py,.java,.txt',
-        link: ''
-    }
-    const accepts = types.map((t) => map[t]).filter(Boolean)
-    return accepts.length ? accepts.join(',') : undefined
-})
-
-const uploadMultiple = computed(() => {
-    if (!session || !session.renderConfig) return false
-    return (session.renderConfig.maxFiles || 1) > 1
-})
-
-function onFile(e: Event) {
-    const input = e.target as HTMLInputElement
-    const files = input.files
-    if (!files || files.length === 0 || !course || !session) return
-    const arr: any[] = []
-    let remaining = files.length
-    for (let i = 0; i < files.length; i++) {
-        const f = files[i]
-        const reader = new FileReader()
-        reader.onload = () => {
-            arr.push({ name: f.name, type: f.type, data: String(reader.result) })
-            remaining--
-            if (remaining === 0) {
-                const key = `pf:upload:${course.id}:${session.id}:${studentId}`
-                try {
-                    localStorage.setItem(key, JSON.stringify(arr))
-                } catch (e) {
-                    localStorage.setItem(key, String(arr[0]?.data || ''))
-                }
-                uploaded.value = true
-            }
+// flatten chapters → ordered steps (pages then evaluations per chapter)
+const steps = computed<Step[]>(() => {
+    const out: Step[] = []
+    let i = 0
+    for (const ch of session.value?.chapters || []) {
+        if (ch.visible === false) continue
+        for (const p of ch.pages || []) {
+            if (p.visible === false) continue
+            out.push({ key: `p${p.id}`, index: i++, type: 'page', id: Number(p.id), chapter: ch.title, data: p })
         }
-        reader.readAsDataURL(f)
+        for (const ev of ch.evaluations || []) {
+            if (ev.visible === false) continue
+            out.push({ key: `e${ev.id}`, index: i++, type: 'eval', id: Number(ev.id), chapter: ch.title, data: ev })
+        }
     }
-}
+    return out
+})
+const grouped = computed(() => {
+    const groups: { chapter: string; items: Step[] }[] = []
+    for (const st of steps.value) {
+        let g = groups[groups.length - 1]
+        if (!g || g.chapter !== st.chapter) { g = { chapter: st.chapter, items: [] }; groups.push(g) }
+        g.items.push(st)
+    }
+    return groups
+})
 
-function givePoints(n = 10) {
-    store.awardPoints(studentId, n)
-    showToast(`+${n} points`)
-}
+const stepIndex = ref(0)
+const currentStep = computed(() => steps.value[stepIndex.value] || null)
 
-function giveBadge() {
-    if (!session) return
-    store.awardBadge(studentId, { id: session.id + '-badge', title: 'Badge séance' })
-    showToast('Badge accordé')
-}
-
-function completeSession() {
-    if (!course || !session) return
-    store.saveProgress(studentId, course.id, session.id, { done: true, at: Date.now() })
-    showToast('Séance marquée comme terminée')
-}
-
-function scrollTo(id: string) {
-    const el = document.getElementById(id)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function scrollToTop() {
+function go(i: number) {
+    stepIndex.value = Math.max(0, Math.min(i, steps.value.length - 1))
     window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onMounted(() => {
-    // observe chapter articles to set activeChapter
-    try {
-        const options = { root: null, rootMargin: '0px 0px -60% 0px', threshold: 0 }
-        _observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    activeChapter.value = (entry.target as HTMLElement).id || null
-                }
-            })
-        }, options)
-        const els = document.querySelectorAll('article[id]')
-        els.forEach((el) => _observer && _observer.observe(el))
-    } catch (e) {
-        // ignore
-    }
-    // set initial TOC open state based on viewport
-    try {
-        tocOpen.value = window.innerWidth >= 1024
-    } catch (e) { }
+// on session change, jump to the first incomplete page (else first step)
+watch([() => route.params.sid, steps], () => {
+    const firstTodo = steps.value.find((s) => s.type === 'page' && !gam.isPageDone(s.id))
+    stepIndex.value = firstTodo ? firstTodo.index : 0
+}, { immediate: true })
+
+const nextSession = computed(() => {
+    const idx = course.value?.sessions.findIndex((s: any) => s.id === session.value?.id) ?? -1
+    return idx >= 0 && idx < (course.value?.sessions.length ?? 0) - 1 ? course.value!.sessions[idx + 1] : null
 })
 
-onBeforeUnmount(() => {
-    if (_observer) {
-        _observer.disconnect()
-        _observer = null
+const pageIds = computed<number[]>(() => steps.value.filter((s) => s.type === 'page').map((s) => s.id))
+const totalPages = computed(() => pageIds.value.length)
+const donePages = computed(() => pageIds.value.filter((id) => gam.isPageDone(id)).length)
+const sessionPct = computed(() => (totalPages.value ? Math.round((donePages.value / totalPages.value) * 100) : 0))
+
+function stepIcon(st: Step) {
+    if (st.type === 'eval') return IconClipboardCheck
+    return gam.isPageDone(st.id) ? IconCircleCheck : IconCircle
+}
+function stepIconClass(st: Step) {
+    if (st.type === 'eval') return gam.evalResult(st.id)?.passed ? 'text-emerald-600' : 'text-primary'
+    return gam.isPageDone(st.id) ? 'text-emerald-600' : 'text-muted-foreground'
+}
+
+async function complete(page: any) {
+    try {
+        const res = await gam.completePage(page.id)
+        if (!res.alreadyDone) {
+            showToast(`Page terminée · +${res.pointsEarned} pts`)
+            for (const b of res.newBadges) showToast(`${b.icon} Badge débloqué : ${b.label}`, 'success', 5000)
+        }
+        // auto-advance to the next step
+        if (stepIndex.value < steps.value.length - 1) go(stepIndex.value + 1)
+    } catch {
+        showToast('Action impossible', 'error')
     }
-})
-
-// computed prev/next
-const sessionIndex = computed(() => course?.sessions.findIndex((s: any) => s.id === session.id) ?? -1)
-const prevSession = computed(() => (sessionIndex.value > 0 ? course.sessions[sessionIndex.value - 1] : null))
-const nextSession = computed(() => (sessionIndex.value >= 0 && sessionIndex.value < course.sessions.length - 1 ? course.sessions[sessionIndex.value + 1] : null))
-
-// expose toast and preview to template
-
+}
 </script>
-
-<style scoped>
-.rounded-full {
-    border-radius: 9999px
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 25px rgba(2, 6, 23, 0.08)
-}
-</style>
