@@ -185,7 +185,7 @@
               <div class="p-4 border-b border-zinc-800 space-y-2 text-xs text-zinc-400">
                 <div class="flex items-center gap-2">
                   <span class="font-semibold text-zinc-500 w-12 select-none">De :</span>
-                  <span class="text-amber-500 font-medium">no-reply@pedagoflow.com</span>
+                  <span class="text-amber-500 font-medium">no-reply@progressia.app</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="font-semibold text-zinc-500 w-12 select-none">À :</span>
