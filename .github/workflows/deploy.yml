@@ -1,0 +1,105 @@
+name: Build & Deploy to VPS (Docker)
+
+on:
+  push:
+    branches:
+      - main  # Déclenche le déploiement lors d'un push sur la branche main. Modifiez si besoin.
+
+jobs:
+  build-frontend:
+    name: Build Frontend (Test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend production assets (Validation)
+        run: npm run build-only
+
+  test-backend:
+    name: Validate Backend (Symfony)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, ctype, iconv
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict
+        working-directory: backend
+
+  deploy:
+    name: Deploy to VPS (Docker)
+    needs: [build-frontend, test-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'placeholder'
+          if_key_exists: replace
+
+      - name: Adding Known Hosts
+        run: ssh-keyscan -p ${{ secrets.SSH_PORT || '22' }} -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      # Déploiement de l'intégralité du monorepo dans le dossier progressIA.app du VPS
+      - name: Deploy codebase via rsync
+        run: |
+          rsync -avz -e "ssh -p ${{ secrets.SSH_PORT || '22' }}" \
+            --exclude='node_modules/' \
+            --exclude='vendor/' \
+            --exclude='backend/vendor/' \
+            --exclude='backend/var/cache/*' \
+            --exclude='backend/var/log/*' \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='backend/.env.local' \
+            --exclude='backend/.env.dev' \
+            --exclude='backend/.env.test' \
+            --delete \
+            ./ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.TARGET_COMPOSE_DIR || '/var/www/progressia' }}/progressIA.app/
+
+      # Commandes post-déploiement sur le VPS pour reconstruire le front et mettre à jour le back dans Docker
+      - name: Execute post-deployment commands on VPS (Docker)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            # Se déplacer dans le dossier contenant le docker-compose.yml
+            cd ${{ secrets.TARGET_COMPOSE_DIR || '/var/www/progressia' }}
+            
+            # Recompiler et redémarrer le conteneur frontend
+            docker compose up -d --build front
+            
+            # Mettre à jour les dépendances composer à l'intérieur du conteneur PHP
+            docker compose exec -T php composer install --no-dev --optimize-autoloader --no-interaction
+            
+            # Exécuter les migrations de base de données à l'intérieur du conteneur PHP
+            docker compose exec -T php php bin/console doctrine:migrations:migrate --no-interaction
+            
+            # Nettoyer et pré-chauffer le cache Symfony à l'intérieur du conteneur PHP
+            docker compose exec -T php php bin/console cache:clear --env=prod
+            docker compose exec -T php php bin/console cache:warmup --env=prod

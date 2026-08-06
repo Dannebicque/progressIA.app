@@ -174,7 +174,7 @@ final class TeacherEmailController
 
             try {
                 $emailObj = (new Email())
-                    ->from('no-reply@pedagoflow.com')
+                    ->from('no-reply@progressia.app')
                     ->to($student->getEmail())
                     ->subject($compiledSubject)
                     ->html(nl2br($compiledContent));
