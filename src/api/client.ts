@@ -2,6 +2,8 @@
 // Handles the base URL, JWT bearer token, JSON (and merge-patch for PATCH),
 // and surfaces a typed ApiError on non-2xx responses.
 
+import { showToast } from '@/composables/useToast'
+
 const BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
 const TOKEN_KEY = 'pf:token'
@@ -55,11 +57,17 @@ export async function request<T = unknown>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch (error) {
+    showToast('Le serveur est temporairement injoignable. Veuillez vérifier votre connexion ou réessayer dans quelques instants.', 'error', 5000)
+    throw error
+  }
 
   if (res.status === 204) {
     return undefined as T
@@ -73,6 +81,10 @@ export async function request<T = unknown>(
       (data && typeof data === 'object' && (('detail' in data && (data as any).detail) ||
         ('message' in data && (data as any).message))) ||
       `HTTP ${res.status}`
+    
+    if (res.status >= 500) {
+      showToast('Une erreur serveur est survenue. Le serveur est peut-être en cours de mise à jour. Veuillez réessayer.', 'error', 5000)
+    }
     throw new ApiError(res.status, String(message), data)
   }
 
