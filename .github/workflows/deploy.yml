@@ -68,6 +68,7 @@ jobs:
             --exclude='node_modules/' \
             --exclude='vendor/' \
             --exclude='backend/vendor/' \
+            --exclude='backend/var/' \
             --exclude='backend/var/cache/*' \
             --exclude='backend/var/log/*' \
             --exclude='.git/' \
