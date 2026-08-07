@@ -69,8 +69,6 @@ jobs:
             --exclude='vendor/' \
             --exclude='backend/vendor/' \
             --exclude='backend/var/' \
-            --exclude='backend/var/cache/*' \
-            --exclude='backend/var/log/*' \
             --exclude='.git/' \
             --exclude='.github/' \
             --exclude='backend/.env.local' \
