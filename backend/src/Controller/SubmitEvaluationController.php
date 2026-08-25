@@ -54,10 +54,16 @@ final class SubmitEvaluationController
             }
         }
 
+        $isTree = 'tree' === $evaluation->getType();
         $score = 0;
         $maxScore = 0;
         $results = [];
         foreach ($evaluation->getQuestions() as $question) {
+            $hasAnswer = isset($byQuestion[$question->getId()]);
+            if ($isTree && !$hasAnswer) {
+                continue;
+            }
+
             $maxScore += $question->getPoints();
             $submitted = $byQuestion[$question->getId()] ?? [];
             [$correct, $awarded] = $this->grade($question, $submitted);

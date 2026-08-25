@@ -21,6 +21,10 @@ export interface AuthUser {
   studentGroup?: string | null
   studentYear?: string | null
   studentInstitution?: string | null
+  institution?: { id: number; name: string; subscriptionFee?: string; costPerStudent?: string } | null
+  institutions?: Array<{ id: number; name: string }> | null
+  studentSemester?: { id: number; name: string } | null
+  studentFormation?: { id: number; name: string } | null
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -46,8 +50,8 @@ export const useAuthStore = defineStore('auth', {
       return user
     },
     // Create an account then sign in automatically.
-    async register(name: string, email: string, password: string): Promise<AuthUser> {
-      await api.post('/api/register', { name, email, password }, { anonymous: true })
+    async register(name: string, email: string, password: string, invitationCode?: string): Promise<AuthUser> {
+      await api.post('/api/register', { name, email, password, invitationCode: invitationCode || undefined }, { anonymous: true })
       return this.login(email, password)
     },
     // Update the authenticated user's own profile (name / email / password).
@@ -74,7 +78,13 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('pf:user')
     },
     isTeacher() {
-      return this.user?.roles?.includes('ROLE_TEACHER') ?? false
+      return this.user?.roles?.some((r) => ['ROLE_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_SUPER_ADMIN'].includes(r)) ?? false
+    },
+    isSchoolAdmin() {
+      return this.user?.roles?.some((r) => ['ROLE_SCHOOL_ADMIN', 'ROLE_SUPER_ADMIN'].includes(r)) ?? false
+    },
+    isSuperAdmin() {
+      return this.user?.roles?.includes('ROLE_SUPER_ADMIN') ?? false
     },
   },
 })

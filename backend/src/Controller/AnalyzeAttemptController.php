@@ -29,14 +29,43 @@ final class AnalyzeAttemptController
             throw new UnauthorizedHttpException('Bearer', 'Authentification requise.');
         }
 
-        if (!in_array('ROLE_TEACHER', $currentUser->getRoles(), true)) {
+        if (!$this->security->isGranted('ROLE_TEACHER')) {
             throw new AccessDeniedHttpException('Accès réservé aux enseignants.');
         }
 
-        $groqApiKey = $_ENV['GROQ_API_KEY'] ?? $_SERVER['GROQ_API_KEY'] ?? null;
-        if (!$groqApiKey) {
+        $student = $attempt->getUser();
+        $institution = $student->getInstitution();
+
+        if ($institution && !$institution->isAiEnabled()) {
             return new JsonResponse([
-                'error' => 'La clé API Groq n\'est pas configurée. Veuillez définir la variable GROQ_API_KEY dans votre fichier .env.local backend.'
+                'error' => 'L\'analyse par intelligence artificielle est désactivée pour cet établissement.'
+            ], 403);
+        }
+
+        $apiKey = null;
+        $endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+        $model = 'llama-3.3-70b-versatile';
+        $provider = 'groq';
+
+        if ($institution && $institution->getAiConfigType() === 'custom') {
+            $apiKey = $institution->getAiApiKey();
+            $provider = strtolower($institution->getAiProvider());
+            $model = $institution->getAiModel() ?: 'llama-3.3-70b-versatile';
+
+            if ($provider === 'openai') {
+                $endpoint = 'https://api.openai.com/v1/chat/completions';
+            } elseif ($provider === 'anthropic') {
+                $endpoint = 'https://api.anthropic.com/v1/messages';
+            } else {
+                $endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+            }
+        } else {
+            $apiKey = $_ENV['GROQ_API_KEY'] ?? $_SERVER['GROQ_API_KEY'] ?? null;
+        }
+
+        if (!$apiKey) {
+            return new JsonResponse([
+                'error' => 'La clé API de l\'intelligence artificielle n\'est pas configurée.'
             ], 400);
         }
 
@@ -83,32 +112,44 @@ final class AnalyzeAttemptController
             $promptData['answers'][] = $qData;
         }
 
-        // Prepare the payload for Groq
-        $systemMessage = "Tu es un assistant IA pédagogique qui aide l'enseignant à évaluer le rendu d'un étudiant. Tu dois obligatoirement renvoyer un objet JSON contenant exactement deux clés :\n" .
+        // Prepare the payload for Groq/OpenAI/Anthropic
+        $systemMessage = "Tu es un assistant IA pédagogique qui aide l'enseignant à évaluer le rendu d'un étudiant. Tu devez obligatoirement renvoyer un objet JSON contenant exactement deux clés :\n" .
                          "- \"feedbackTeacher\": Une analyse critique et technique détaillée du rendu, destinée à l'enseignant (points forts, lacunes identifiées, conseils pour accompagner l'étudiant).\n" .
                          "- \"feedbackStudent\": Un retour d'évaluation constructif, encourageant, positif et bienveillant, rédigé en français et destiné directement à l'étudiant (adresse-toi à lui en utilisant son prénom, sois clair et pédagogue, ne mentionne pas qu'il s'agit d'une analyse automatisée).\n\n" .
                          "Les valeurs de ces deux clés doivent obligatoirement être de simples chaînes de caractères (string) et non pas des tableaux ou des objets.";
 
         $userMessage = json_encode($promptData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
-        $payload = [
-            'model' => 'llama-3.3-70b-versatile',
-            'response_format' => ['type' => 'json_object'],
-            'messages' => [
-                ['role' => 'system', 'content' => $systemMessage],
-                ['role' => 'user', 'content' => $userMessage],
-            ],
-            'temperature' => 0.5,
-        ];
+        $headers = ['Content-Type: application/json'];
+        if ($provider === 'anthropic') {
+            $headers[] = 'x-api-key: ' . $apiKey;
+            $headers[] = 'anthropic-version: 2023-06-01';
+            $payload = [
+                'model' => $model,
+                'max_tokens' => 2000,
+                'system' => $systemMessage,
+                'messages' => [
+                    ['role' => 'user', 'content' => $userMessage]
+                ]
+            ];
+        } else {
+            $headers[] = 'Authorization: Bearer ' . $apiKey;
+            $payload = [
+                'model' => $model,
+                'response_format' => ['type' => 'json_object'],
+                'messages' => [
+                    ['role' => 'system', 'content' => $systemMessage],
+                    ['role' => 'user', 'content' => $userMessage],
+                ],
+                'temperature' => 0.5,
+            ];
+        }
 
-        // Call Groq API via cURL
-        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        // Call AI API via cURL
+        $ch = curl_init($endpoint);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $groqApiKey,
-            'Content-Type: application/json',
-        ]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
@@ -119,19 +160,48 @@ final class AnalyzeAttemptController
 
         if ($response === false) {
             return new JsonResponse([
-                'error' => 'Erreur lors de l\'appel à l\'API Groq : ' . $curlError
+                'error' => 'Erreur lors de l\'appel à l\'API IA : ' . $curlError
             ], 500);
         }
 
         if ($httpCode !== 200) {
             return new JsonResponse([
-                'error' => 'Groq API a renvoyé un code HTTP ' . $httpCode,
+                'error' => 'L\'API IA a renvoyé un code HTTP ' . $httpCode,
                 'details' => json_decode($response, true) ?: $response
             ], 502);
         }
 
         $result = json_decode($response, true);
-        $content = $result['choices'][0]['message']['content'] ?? '';
+        
+        if ($provider === 'anthropic') {
+            $content = $result['content'][0]['text'] ?? '';
+            $promptTokens = $result['usage']['input_tokens'] ?? 0;
+            $completionTokens = $result['usage']['output_tokens'] ?? 0;
+        } else {
+            $content = $result['choices'][0]['message']['content'] ?? '';
+            $promptTokens = $result['usage']['prompt_tokens'] ?? 0;
+            $completionTokens = $result['usage']['completion_tokens'] ?? 0;
+        }
+
+        // Log usage if student has an institution
+        if ($institution) {
+            // Groq/Llama input: 0.15$ / 1M, output: 0.60$ / 1M
+            // Convert to € (1 USD = 0.92 EUR)
+            $inputCost = ($promptTokens / 1000000) * 0.15 * 0.92;
+            $outputCost = ($completionTokens / 1000000) * 0.60 * 0.92;
+            $totalCost = $inputCost + $outputCost;
+
+            $log = (new \App\Entity\AiUsageLog())
+                ->setInstitution($institution)
+                ->setUser($currentUser)
+                ->setFeature('attempt_analysis')
+                ->setPromptTokens($promptTokens)
+                ->setCompletionTokens($completionTokens)
+                ->setEstimatedCost(sprintf('%.5f', $totalCost));
+
+            $this->em->persist($log);
+        }
+
         $feedbacks = json_decode($content, true);
 
         if (!isset($feedbacks['feedbackTeacher']) || !isset($feedbacks['feedbackStudent'])) {

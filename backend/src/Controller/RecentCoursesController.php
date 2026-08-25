@@ -34,13 +34,39 @@ final class RecentCoursesController
 
         $courses = [];
 
-        if (in_array('ROLE_TEACHER', $user->getRoles(), true)) {
-            // For teachers: last 4 edited courses
+        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
             $courses = $this->em->getRepository(Course::class)->findBy(
                 [],
                 ['updatedAt' => 'DESC', 'id' => 'DESC'],
                 4
             );
+        } elseif ($this->security->isGranted('ROLE_SCHOOL_ADMIN')) {
+            $institution = $user->getInstitution();
+            if ($institution) {
+                $courses = $this->em->createQueryBuilder()
+                    ->select('c')
+                    ->from(Course::class, 'c')
+                    ->join('c.institutions', 'inst')
+                    ->where('inst.id = :instId')
+                    ->setParameter('instId', $institution->getId())
+                    ->orderBy('c.updatedAt', 'DESC')
+                    ->addOrderBy('c.id', 'DESC')
+                    ->setMaxResults(4)
+                    ->getQuery()
+                    ->getResult();
+            }
+        } elseif ($this->security->isGranted('ROLE_TEACHER')) {
+            $courses = $this->em->createQueryBuilder()
+                ->select('c')
+                ->from(Course::class, 'c')
+                ->join('c.teachers', 't')
+                ->where('t.id = :teacherId')
+                ->setParameter('teacherId', $user->getId())
+                ->orderBy('c.updatedAt', 'DESC')
+                ->addOrderBy('c.id', 'DESC')
+                ->setMaxResults(4)
+                ->getQuery()
+                ->getResult();
         } else {
             // For students: last 4 followed courses (pages completed or evaluation attempts)
             // Query most recent page completions

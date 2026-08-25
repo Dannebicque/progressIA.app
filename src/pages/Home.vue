@@ -5,8 +5,8 @@
             <div class="grid items-center gap-8 p-8 lg:grid-cols-2 lg:p-14">
                 <div>
                     <Badge class="mb-4 bg-white/15 text-white hover:bg-white/20">Plateforme pédagogique</Badge>
-                    <h1 class="text-3xl font-bold leading-tight lg:text-5xl">Créez des cours engageants et gamifiés</h1>
-                    <p class="mt-4 max-w-xl text-lg text-white/90">Rédigez en Markdown, suivez la progression et récompensez vos apprenants avec points & badges.</p>
+                    <h1 class="text-3xl font-bold leading-tight lg:text-5xl">{{ heroTitle }}</h1>
+                    <p class="mt-4 max-w-xl text-lg text-white/90">{{ heroSubtitle }}</p>
                     <div class="mt-6 flex flex-wrap gap-3">
                         <RouterLink to="/courses">
                             <Button size="lg" class="rounded-full bg-white text-indigo-700 hover:bg-white/90">
@@ -161,6 +161,61 @@
                 </Card>
             </div>
 
+            <!-- Pricing Plans Section -->
+            <div class="mt-20 text-center max-w-3xl mx-auto space-y-4">
+                <Badge variant="outline" class="border-indigo-600/30 text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:text-indigo-400">Tarifs & Offres</Badge>
+                <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+                    Des formules claires adaptées à chaque établissement
+                </h2>
+                <p class="text-muted-foreground text-sm sm:text-base">
+                    Choisissez l'offre qui correspond à la taille de votre école et à votre besoin en accompagnement pédagogique et intelligence artificielle.
+                </p>
+            </div>
+
+            <div class="mt-12 grid gap-6 md:grid-cols-3">
+                <Card
+                    v-for="(plan, idx) in plans"
+                    :key="plan.name"
+                    :class="[
+                        'flex flex-col justify-between transition-all hover:shadow-lg',
+                        idx === 1 ? 'border-primary shadow-md relative bg-gradient-to-b from-indigo-50/10 to-indigo-100/5 dark:from-indigo-950/10 dark:to-indigo-950/5' : ''
+                    ]"
+                >
+                    <!-- Most Popular Badge -->
+                    <div v-if="idx === 1" class="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold text-primary-foreground uppercase tracking-wider">
+                        Recommandé
+                    </div>
+
+                    <CardHeader class="pb-4">
+                        <CardTitle class="text-lg font-bold">{{ plan.name }}</CardTitle>
+                        <CardDescription class="text-xs min-h-[40px] mt-1.5 leading-relaxed">{{ plan.description }}</CardDescription>
+                    </CardHeader>
+                    
+                    <CardContent class="flex-1 space-y-6">
+                        <!-- Pricing Details -->
+                        <div class="border-y py-4 border-border/60">
+                            <div class="flex items-baseline gap-1.5 justify-center">
+                                <span class="text-3xl font-extrabold tracking-tight">{{ Number(plan.priceFixed).toFixed(0) }} €</span>
+                                <span class="text-xs text-muted-foreground">/ an fixe</span>
+                            </div>
+                            <div class="text-center text-xs text-muted-foreground mt-1.5 font-medium">
+                                + <strong class="text-foreground">{{ Number(plan.pricePerStudent).toFixed(2) }} €</strong> / étudiant / an
+                            </div>
+                        </div>
+
+                        <!-- Features Checklist -->
+                        <ul class="space-y-2.5 text-xs text-left">
+                            <li v-for="feat in plan.features" :key="feat" class="flex items-start gap-2.5">
+                                <svg class="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                                <span class="leading-tight">{{ feat }}</span>
+                            </li>
+                        </ul>
+                    </CardContent>
+                </Card>
+            </div>
+
             <!-- Demo Form / Call to Action -->
             <Card class="mt-12 overflow-hidden border-0 bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white shadow-xl relative">
                 <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent pointer-events-none"></div>
@@ -244,6 +299,59 @@ const featured = computed(() => store.courses.slice(0, 4))
 const recentCourses = ref<any[]>([])
 const loadingRecent = ref(false)
 
+interface Plan {
+    name: string
+    description: string
+    priceFixed: string
+    pricePerStudent: string
+    features: string[]
+}
+
+const heroTitle = ref("Créez des cours engageants et gamifiés")
+const heroSubtitle = ref("Rédigez en Markdown, suivez la progression et récompensez vos apprenants avec points & badges.")
+const plans = ref<Plan[]>([
+    {
+        name: 'Pack Classique',
+        description: 'Idéal pour démarrer avec la gamification standard de vos cours.',
+        priceFixed: '300.00',
+        pricePerStudent: '5.00',
+        features: [
+            'Multi-Établissements & Cloisonnement des données',
+            'Identité Visuelle Propre & Charte graphique de l\'école',
+            'Suivi & Statistiques Globales par promotion',
+            'Souveraineté des Données (Hébergement RGPD)',
+            'Support Standard par email'
+        ]
+    },
+    {
+        name: 'Pack IA Démo (Groq/Llama)',
+        description: 'Intégrez la puissance de l\'IA ProgressIA pour corriger et guider vos étudiants.',
+        priceFixed: '500.00',
+        pricePerStudent: '8.00',
+        features: [
+            'Tous les outils du Pack Classique',
+            'Analyse automatique d\'exercices par IA',
+            'Correction et explications Llama 3 en temps réel',
+            'Suivi détaillé de la consommation de jetons',
+            'Facturation mensuelle basée sur l\'usage IA'
+        ]
+    },
+    {
+        name: 'Pack IA Enterprise (SSO & Propre API)',
+        description: 'Branchez vos propres clés d\'API (OpenAI, Claude) sans surcoût plateforme et intégrez ProgressIA à votre ENT.',
+        priceFixed: '800.00',
+        pricePerStudent: '10.00',
+        features: [
+            'Tous les outils du Pack Classique',
+            'Prise en charge de vos clés d\'API personnelles',
+            'Pas de frais supplémentaires sur l\'usage de jetons',
+            'Sélection libre du modèle (GPT-4o, Claude 3.5)',
+            'SSO & Connexion ENT (CAS, Shibboleth, OAuth)',
+            'Support Premium 24h/24 & 7j/7'
+        ]
+    }
+])
+
 const contactForm = ref({
     name: '',
     email: '',
@@ -251,17 +359,50 @@ const contactForm = ref({
     message: ''
 })
 
-function handleContactSubmit() {
-    showToast('Demande envoyée ! Notre équipe vous contactera sous 24h.', 'success')
-    contactForm.value = {
-        name: '',
-        email: '',
-        institution: '',
-        message: ''
+async function handleContactSubmit() {
+    if (!contactForm.value.name || !contactForm.value.email || !contactForm.value.institution || !contactForm.value.message) {
+        showToast('Veuillez remplir tous les champs du formulaire.', 'error')
+        return
+    }
+
+    try {
+        await api.post('/api/contact_requests', {
+            name: contactForm.value.name,
+            email: contactForm.value.email,
+            institutionName: contactForm.value.institution,
+            message: contactForm.value.message
+        }, { anonymous: true })
+
+        showToast('Votre demande a bien été enregistrée ! Notre équipe vous contactera sous 24h.', 'success')
+        contactForm.value = {
+            name: '',
+            email: '',
+            institution: '',
+            message: ''
+        }
+    } catch (e: any) {
+        console.error(e)
+        showToast('Une erreur est survenue lors de l\'envoi de votre demande.', 'error')
+    }
+}
+
+async function loadLandingConfig() {
+    try {
+        const config = await api.get<any>('/api/landing_configs/1', { anonymous: true })
+        if (config) {
+            heroTitle.value = config.heroTitle
+            heroSubtitle.value = config.heroSubtitle
+            if (config.plansJson && config.plansJson.length) {
+                plans.value = config.plansJson
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load landing page config, using fallback values.', e)
     }
 }
 
 onMounted(async () => {
+    await loadLandingConfig()
     if (auth.isAuthenticated) {
         loadingRecent.value = true
         try {

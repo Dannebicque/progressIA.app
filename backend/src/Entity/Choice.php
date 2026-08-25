@@ -58,6 +58,12 @@ class Choice
     #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'choice:read', 'choice:write'])]
     private int $position = 0;
 
+    #[ORM\ManyToOne(targetEntity: Question::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'choice:read', 'choice:write'])]
+    private ?Question $nextQuestion = null;
+
+
     public function getId(): ?int
     {
         return $this->id;
@@ -107,6 +113,18 @@ class Choice
     public function setPosition(int $position): static
     {
         $this->position = $position;
+
+        return $this;
+    }
+
+    public function getNextQuestion(): ?Question
+    {
+        return $this->nextQuestion;
+    }
+
+    public function setNextQuestion(?Question $nextQuestion): static
+    {
+        $this->nextQuestion = $nextQuestion;
 
         return $this;
     }

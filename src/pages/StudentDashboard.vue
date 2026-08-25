@@ -110,6 +110,47 @@
                     </CardContent>
                 </Card>
 
+                <!-- Leaderboard Widget -->
+                <Card>
+                    <CardHeader class="pb-3">
+                        <CardTitle class="text-base flex items-center gap-1.5">
+                            <span>🏆</span>
+                            <span>Classement de l'école</span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent class="p-0 border-t">
+                        <div v-if="loadingLeaderboard" class="p-4 text-center text-xs text-muted-foreground">
+                            Chargement...
+                        </div>
+                        <div v-else class="divide-y text-xs">
+                            <div
+                                v-for="item in leaderboard"
+                                :key="item.rank"
+                                :class="[
+                                    'flex items-center justify-between p-2.5 px-4',
+                                    item.isCurrentUser ? 'bg-indigo-500/10 font-bold border-y border-indigo-500/20' : ''
+                                ]"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 font-mono text-center text-muted-foreground">
+                                        <span v-if="item.rank === 1">🥇</span>
+                                        <span v-else-if="item.rank === 2">🥈</span>
+                                        <span v-else-if="item.rank === 3">🥉</span>
+                                        <span v-else>#{{ item.rank }}</span>
+                                    </span>
+                                    <span class="truncate max-w-[120px]" :class="item.isCurrentUser ? 'text-indigo-600 dark:text-indigo-400' : ''">
+                                        {{ item.name }}
+                                    </span>
+                                </div>
+                                <span class="font-semibold text-muted-foreground shrink-0">{{ item.points }} pts</span>
+                            </div>
+                            <p v-if="!leaderboard.length" class="p-4 text-center text-xs text-muted-foreground italic">
+                                Aucun participant.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- AI Feedback Widget -->
                 <Card v-if="evalsWithFeedback.length">
                     <CardHeader>
@@ -153,13 +194,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { IconStar, IconChartBar, IconSearch, IconSearchOff, IconSparkles, IconBrain } from '@tabler/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useCoursesStore } from '@/stores/courses'
 import { useGamificationStore, type EvalProgress } from '@/stores/gamification'
 import { useAuthStore } from '@/stores/auth'
+import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -181,6 +223,31 @@ const auth = useAuthStore()
 
 const points = computed(() => auth.user?.points ?? 0)
 const badges = computed(() => auth.user?.badges || [])
+
+interface LeaderboardItem {
+    rank: number
+    name: string
+    points: number
+    isCurrentUser: boolean
+}
+
+const leaderboard = ref<LeaderboardItem[]>([])
+const loadingLeaderboard = ref(false)
+
+async function loadLeaderboard() {
+    loadingLeaderboard.value = true
+    try {
+        leaderboard.value = await api.get<LeaderboardItem[]>('/api/me/leaderboard')
+    } catch (e) {
+        console.error('Failed to load leaderboard', e)
+    } finally {
+        loadingLeaderboard.value = false
+    }
+}
+
+onMounted(() => {
+    loadLeaderboard()
+})
 
 // AI Feedback Dialog state
 const isAIModalOpen = ref(false)

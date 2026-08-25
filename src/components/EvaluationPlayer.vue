@@ -1,19 +1,22 @@
-<template>
+22<template>
     <Card>
         <CardHeader>
             <div class="flex items-center gap-2">
                 <IconClipboardCheck class="size-5 text-primary" />
                 <CardTitle class="text-base">{{ evaluation.title }}</CardTitle>
-                <Badge v-if="result" :variant="result.passed ? 'default' : 'destructive'" class="ml-auto">
+                <Badge v-if="evaluation.type === 'tree' && !result" variant="outline" class="ml-auto">
+                    Question {{ history.length + 1 }}
+                </Badge>
+                <Badge v-if="result" :variant="result.passed ? 'default' : 'destructive'" :class="evaluation.type === 'tree' ? '' : 'ml-auto'">
                     {{ result.score }} / {{ result.maxScore }}
                 </Badge>
             </div>
             <CardDescription v-if="evaluation.description">{{ evaluation.description }}</CardDescription>
         </CardHeader>
         <CardContent class="space-y-5">
-            <div v-for="(q, qi) in evaluation.questions" :key="q.id" class="space-y-2">
+            <div v-for="(q, qi) in visibleQuestions" :key="q.id" class="space-y-2">
                 <div class="flex items-start gap-2 text-sm font-medium">
-                    <span class="text-muted-foreground">{{ Number(qi) + 1 }}.</span>
+                    <span class="text-muted-foreground">{{ evaluation.type === 'tree' && !result ? (history.length + 1) : (Number(qi) + 1) }}.</span>
                     <span class="flex-1">{{ q.statement }}</span>
                     <span class="shrink-0 text-xs text-muted-foreground">{{ q.points }} pt{{ q.points > 1 ? 's' : '' }}</span>
                     <component v-if="result && perQuestion(q.id)" :is="perQuestion(q.id)?.correct ? IconCircleCheck : IconCircleX"
@@ -72,9 +75,17 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <Button v-if="!result" :disabled="submitting" @click="submit">
-                    <IconLoader2 v-if="submitting" class="size-4 animate-spin" /> Valider mes réponses
-                </Button>
+                <template v-if="!result">
+                    <Button v-if="evaluation.type === 'tree'" variant="outline" :disabled="history.length === 0" @click="handlePrev">
+                        Précédent
+                    </Button>
+                    <Button v-if="evaluation.type === 'tree' && getNextQId() !== null" @click="handleNext">
+                        Continuer
+                    </Button>
+                    <Button v-if="evaluation.type !== 'tree' || getNextQId() === null" :disabled="submitting" @click="submit">
+                        <IconLoader2 v-if="submitting" class="size-4 animate-spin" /> Valider mes réponses
+                    </Button>
+                </template>
                 <template v-else>
                     <Button variant="outline" @click="retry">Recommencer</Button>
                     <span class="text-sm" :class="result.passed ? 'text-emerald-600' : 'text-destructive'">
@@ -107,6 +118,31 @@ const files = reactive<Record<number, string>>({})
 const submitting = ref(false)
 const result = ref<any | null>(null)
 
+const currentQId = ref<number | null>(null)
+const history = ref<number[]>([])
+
+const sortedQuestions = computed(() => {
+    return [...(props.evaluation?.questions || [])].sort((a: any, b: any) => a.position - b.position)
+})
+
+const activeQuestion = computed(() => {
+    if (!sortedQuestions.value.length) return null
+    if (currentQId.value === null) {
+        return sortedQuestions.value[0]
+    }
+    return sortedQuestions.value.find((q) => q.id === currentQId.value) || sortedQuestions.value[0]
+})
+
+const visibleQuestions = computed(() => {
+    if (result.value?.results) {
+        return sortedQuestions.value.filter((q) => result.value.results.some((r: any) => Number(r.question) === Number(q.id)))
+    }
+    if (props.evaluation.type === 'tree') {
+        return activeQuestion.value ? [activeQuestion.value] : []
+    }
+    return sortedQuestions.value
+})
+
 const aiFeedback = computed(() => {
     return result.value?.feedbackStudent || gam.evalResult(props.evaluation.id)?.feedbackStudent || null
 })
@@ -135,11 +171,15 @@ function loadSaved() {
                 }
             }
         }
+        currentQId.value = sortedQuestions.value[0]?.id || null
+        history.value = []
     } else {
         result.value = null
         for (const k of Object.keys(choices)) delete choices[Number(k)]
         for (const k of Object.keys(free)) delete free[Number(k)]
         for (const k of Object.keys(files)) delete files[Number(k)]
+        currentQId.value = sortedQuestions.value[0]?.id || null
+        history.value = []
     }
 }
 
@@ -176,10 +216,66 @@ function removeFile(qid: number) {
     delete files[qid]
 }
 
+function getNextQId() {
+    const q = activeQuestion.value
+    if (!q) return null
+
+    let targetId: number | null = null
+
+    if (q.type === 'qcm') {
+        const picked = choices[q.id] || []
+        for (const cid of picked) {
+            const choiceObj = q.choices?.find((c: any) => c.id === cid)
+            if (choiceObj) {
+                const rawNext = choiceObj.nextQuestion
+                if (rawNext) {
+                    targetId = typeof rawNext === 'object' ? rawNext.id : Number(String(rawNext).split('/').pop())
+                    break
+                }
+            }
+        }
+    }
+
+    if (targetId !== null) {
+        return targetId
+    }
+
+    const curIdx = sortedQuestions.value.findIndex((x) => x.id === q.id)
+    if (curIdx >= 0 && curIdx < sortedQuestions.value.length - 1) {
+        return sortedQuestions.value[curIdx + 1].id
+    }
+
+    return null
+}
+
+function handleNext() {
+    const q = activeQuestion.value
+    if (!q) return
+
+    if (q.type === 'file' && !files[q.id]) {
+        showToast(`Veuillez joindre le document demandé.`, 'warning')
+        return
+    }
+
+    const nextId = getNextQId()
+    if (nextId !== null) {
+        history.value.push(q.id)
+        currentQId.value = nextId
+    }
+}
+
+function handlePrev() {
+    if (history.value.length > 0) {
+        currentQId.value = history.value.pop() || null
+    }
+}
+
 async function submit() {
-    // Check if files are missing for required file questions
+    const visitedQIds = props.evaluation.type === 'tree' ? [...history.value, currentQId.value!] : sortedQuestions.value.map(q => q.id)
+
+    // Check if files are missing for required file questions in visited path
     for (const q of props.evaluation.questions) {
-        if (q.type === 'file' && !files[q.id]) {
+        if (visitedQIds.includes(q.id) && q.type === 'file' && !files[q.id]) {
             showToast(`Veuillez joindre le document demandé pour la question : "${q.statement}"`, 'warning')
             return
         }
@@ -187,13 +283,15 @@ async function submit() {
 
     submitting.value = true
     try {
-        const answers = props.evaluation.questions.map((q: any) =>
-            q.type === 'qcm'
-                ? { question: q.id, choices: choices[q.id] || [] }
-                : q.type === 'file'
-                ? { question: q.id, file: files[q.id] || '' }
-                : { question: q.id, text: free[q.id] || '' },
-        )
+        const answers = props.evaluation.questions
+            .filter((q: any) => visitedQIds.includes(q.id))
+            .map((q: any) =>
+                q.type === 'qcm'
+                    ? { question: q.id, choices: choices[q.id] || [] }
+                    : q.type === 'file'
+                    ? { question: q.id, file: files[q.id] || '' }
+                    : { question: q.id, text: free[q.id] || '' },
+            )
         const res = await gam.submitEvaluation(props.evaluation.id, answers)
         result.value = {
             ...res,
@@ -212,5 +310,7 @@ function retry() {
     for (const k of Object.keys(choices)) delete choices[Number(k)]
     for (const k of Object.keys(free)) delete free[Number(k)]
     for (const k of Object.keys(files)) delete files[Number(k)]
+    currentQId.value = sortedQuestions.value[0]?.id || null
+    history.value = []
 }
 </script>

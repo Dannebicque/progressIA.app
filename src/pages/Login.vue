@@ -32,8 +32,16 @@
                         </Button>
                     </form>
 
-                    <div class="mt-6 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
+                    <div v-if="isDev" class="mt-6 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
                         <p class="mb-1 font-medium text-foreground">Comptes de démonstration</p>
+                        <Button type="button" variant="ghost" size="sm"
+                            class="h-auto w-full justify-start px-2 py-1 font-normal text-muted-foreground" @click="fill('owner')">
+                            Super Admin — owner@progressia.test / owner
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm"
+                            class="h-auto w-full justify-start px-2 py-1 font-normal text-muted-foreground" @click="fill('admin')">
+                            Responsable — admin@progressia.test / admin
+                        </Button>
                         <Button type="button" variant="ghost" size="sm"
                             class="h-auto w-full justify-start px-2 py-1 font-normal text-muted-foreground" @click="fill('teacher')">
                             Enseignant — teacher@progressia.test / teacher
@@ -71,8 +79,9 @@ const loading = ref(false)
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const isDev = import.meta.env.DEV
 
-function fill(role: 'teacher' | 'student') {
+function fill(role: 'owner' | 'admin' | 'teacher' | 'student') {
     email.value = `${role}@progressia.test`
     password.value = role
 }

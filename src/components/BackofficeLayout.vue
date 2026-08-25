@@ -53,7 +53,7 @@
         </div>
 
         <!-- Pedagogy Group -->
-        <div class="space-y-1">
+        <div v-if="auth.isTeacher()" class="space-y-1">
           <div v-if="!isSidebarCollapsed" class="px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
             Gestion Pédagogique
           </div>
@@ -151,7 +151,77 @@
             <span v-if="!isSidebarCollapsed" class="truncate">Étudiants</span>
           </RouterLink>
 
+          <!-- Semesters (School Admin and Super Admin) -->
           <RouterLink
+            v-if="auth.isSchoolAdmin()"
+            to="/backoffice/semesters"
+            :class="[
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              isRouteActive('/backoffice/semesters')
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ]"
+            title="Gérer les semestres de l'établissement"
+            @click="isMobileOpen = false"
+          >
+            <IconCalendar class="size-5 shrink-0" />
+            <span v-if="!isSidebarCollapsed" class="truncate">Semestres</span>
+          </RouterLink>
+
+          <!-- Formations (School Admin and Super Admin) -->
+          <RouterLink
+            v-if="auth.isSchoolAdmin()"
+            to="/backoffice/formations"
+            :class="[
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              isRouteActive('/backoffice/formations')
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ]"
+            title="Gérer les formations"
+            @click="isMobileOpen = false"
+          >
+            <IconSchool class="size-5 shrink-0" />
+            <span v-if="!isSidebarCollapsed" class="truncate">Formations</span>
+          </RouterLink>
+
+          <!-- Institutions (Super Admin only) -->
+          <RouterLink
+            v-if="auth.isSuperAdmin()"
+            to="/backoffice/institutions"
+            :class="[
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              isRouteActive('/backoffice/institutions')
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ]"
+            title="Gérer les établissements autorisés"
+            @click="isMobileOpen = false"
+          >
+            <IconBuilding class="size-5 shrink-0" />
+            <span v-if="!isSidebarCollapsed" class="truncate">Établissements</span>
+          </RouterLink>
+
+          <!-- Vitrine (Super Admin only) -->
+          <RouterLink
+            v-if="auth.isSuperAdmin()"
+            to="/backoffice/site-settings"
+            :class="[
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              isRouteActive('/backoffice/site-settings')
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ]"
+            title="Gérer la page d'accueil publique et les tarifs"
+            @click="isMobileOpen = false"
+          >
+            <IconPalette class="size-5 shrink-0" />
+            <span v-if="!isSidebarCollapsed" class="truncate">Vitrine & Tarifs</span>
+          </RouterLink>
+
+          <!-- Users (School Admin and Super Admin) -->
+          <RouterLink
+            v-if="auth.isSchoolAdmin()"
             to="/backoffice/users"
             :class="[
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-primary',
@@ -164,6 +234,40 @@
           >
             <IconUserShield class="size-5 shrink-0" />
             <span v-if="!isSidebarCollapsed" class="truncate">Utilisateurs</span>
+          </RouterLink>
+
+          <!-- Courses Supervision (School Admin and Super Admin) -->
+          <RouterLink
+            v-if="auth.isSchoolAdmin()"
+            to="/backoffice/admin-courses"
+            :class="[
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              isRouteActive('/backoffice/admin-courses')
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ]"
+            title="Supervision générale des cours"
+            @click="isMobileOpen = false"
+          >
+            <IconBook class="size-5 shrink-0" />
+            <span v-if="!isSidebarCollapsed" class="truncate">Supervision cours</span>
+          </RouterLink>
+
+          <!-- School settings (School Admin) -->
+          <RouterLink
+            v-if="auth.isSchoolAdmin() && !auth.isSuperAdmin() && auth.user?.institution?.id"
+            :to="'/backoffice/institutions/' + auth.user.institution.id"
+            :class="[
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              isRouteActive('/backoffice/institutions/' + auth.user.institution.id)
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ]"
+            title="Configuration de l'établissement"
+            @click="isMobileOpen = false"
+          >
+            <IconSettings class="size-5 shrink-0" />
+            <span v-if="!isSidebarCollapsed" class="truncate">Configuration</span>
           </RouterLink>
         </div>
       </nav>
@@ -521,7 +625,10 @@ import {
   IconPlus,
   IconSettings,
   IconCopy,
-  IconTrash
+  IconTrash,
+  IconBuilding,
+  IconCalendar,
+  IconSchool
 } from '@tabler/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -624,6 +731,23 @@ const breadcrumbs = computed(() => {
       crumbs.push({ label: 'Étudiants', path: '/backoffice/students' })
     } else if (parts[1] === 'teacher') {
       crumbs.push({ label: 'Enseignant', path: '/stats/teacher' })
+    } else if (parts[1] === 'semesters') {
+      crumbs.push({ label: 'Semestres', path: '/backoffice/semesters' })
+    } else if (parts[1] === 'formations') {
+      crumbs.push({ label: 'Formations', path: '/backoffice/formations' })
+    } else if (parts[1] === 'institutions') {
+      if (parts.length > 2) {
+        if (auth.isSuperAdmin()) {
+          crumbs.push({ label: 'Établissements', path: '/backoffice/institutions' })
+          crumbs.push({ label: 'Détails', path: route.path })
+        } else {
+          crumbs.push({ label: 'Configuration', path: route.path })
+        }
+      } else {
+        crumbs.push({ label: 'Établissements', path: '/backoffice/institutions' })
+      }
+    } else if (parts[1] === 'site-settings') {
+      crumbs.push({ label: 'Vitrine', path: '/backoffice/site-settings' })
     }
   }
 
@@ -645,7 +769,15 @@ const courseStore = useCoursesStore()
 onMounted(async () => {
   if (!courseStore.loaded) await courseStore.fetchCourses()
 })
-const courses = computed(() => courseStore.courses)
+const courses = computed(() => {
+  const allCourses = courseStore.courses
+  return allCourses.filter(c => {
+    return c.teachers?.some((t: any) => {
+      const tid = typeof t === 'object' && t !== null ? t.id : (typeof t === 'string' ? t.split('/').pop() : null);
+      return String(tid) === String(auth.user?.id);
+    }) ?? false;
+  })
+})
 
 // Local UI collapse / modals
 const isCoursesExpanded = ref(true)

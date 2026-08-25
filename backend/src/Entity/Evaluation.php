@@ -64,6 +64,11 @@ class Evaluation
     #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'eval:write'])]
     private bool $visible = true;
 
+    #[ORM\Column(length: 20, options: ['default' => 'linear'])]
+    #[Groups(['course:read', 'session:read', 'chapter:read', 'eval:read', 'eval:admin', 'eval:write'])]
+    private string $type = 'linear';
+
+
     /** @var Collection<int, Question> */
     #[ORM\OneToMany(targetEntity: Question::class, mappedBy: 'evaluation', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
@@ -183,6 +188,18 @@ class Evaluation
     public function setVisible(bool $visible): static
     {
         $this->visible = $visible;
+
+        return $this;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): static
+    {
+        $this->type = $type;
 
         return $this;
     }

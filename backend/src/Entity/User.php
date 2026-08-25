@@ -4,8 +4,13 @@ namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Delete;
 use App\Repository\UserRepository;
 use App\State\MeProvider;
+use App\State\UserPasswordProcessor;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -25,6 +30,29 @@ use Symfony\Component\Validator\Constraints as Assert;
             provider: MeProvider::class,
             normalizationContext: ['groups' => ['user:read']],
         ),
+        new GetCollection(
+            security: "is_granted('ROLE_TEACHER')",
+            normalizationContext: ['groups' => ['user:read']],
+        ),
+        new Get(
+            security: "is_granted('ROLE_TEACHER')",
+            normalizationContext: ['groups' => ['user:read']],
+        ),
+        new Post(
+            processor: UserPasswordProcessor::class,
+            security: "is_granted('ROLE_SCHOOL_ADMIN')",
+            normalizationContext: ['groups' => ['user:read']],
+            denormalizationContext: ['groups' => ['user:write']],
+        ),
+        new Patch(
+            processor: UserPasswordProcessor::class,
+            security: "is_granted('ROLE_SCHOOL_ADMIN')",
+            normalizationContext: ['groups' => ['user:read']],
+            denormalizationContext: ['groups' => ['user:write']],
+        ),
+        new Delete(
+            security: "is_granted('ROLE_SCHOOL_ADMIN')",
+        ),
     ],
 )]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
@@ -32,26 +60,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'course:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
     #[Assert\NotBlank]
     #[Assert\Email]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:write', 'course:read'])]
     private ?string $email = null;
 
     /** @var list<string> */
     #[ORM\Column]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:write'])]
     private array $roles = [];
 
     #[ORM\Column]
+    #[Groups(['user:write'])]
     private ?string $password = null;
 
     #[ORM\Column(length: 120)]
     #[Assert\NotBlank]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:write', 'course:read'])]
     private ?string $name = null;
 
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
@@ -63,16 +92,37 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $avatar = null;
 
     #[ORM\Column(length: 50, nullable: true)]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $studentGroup = null;
 
     #[ORM\Column(length: 50, nullable: true)]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $studentYear = null;
 
     #[ORM\Column(length: 120, nullable: true)]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $studentInstitution = null;
+
+    #[ORM\ManyToOne(targetEntity: Institution::class, inversedBy: 'users')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['user:read', 'user:write'])]
+    private ?Institution $institution = null;
+
+    /** @var Collection<int, Institution> */
+    #[ORM\ManyToMany(targetEntity: Institution::class, inversedBy: 'teachers')]
+    #[ORM\JoinTable(name: 'user_institution')]
+    #[Groups(['user:read', 'user:write'])]
+    private Collection $institutions;
+
+    #[ORM\ManyToOne(targetEntity: Semester::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['user:read', 'user:write'])]
+    private ?Semester $studentSemester = null;
+
+    #[ORM\ManyToOne(targetEntity: Formation::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['user:read', 'user:write'])]
+    private ?Formation $studentFormation = null;
 
     /** @var Collection<int, Badge> */
     #[ORM\OneToMany(targetEntity: Badge::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
@@ -83,6 +133,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function __construct()
     {
         $this->badges = new ArrayCollection();
+        $this->institutions = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -252,6 +303,64 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setStudentInstitution(?string $studentInstitution): static
     {
         $this->studentInstitution = $studentInstitution;
+
+        return $this;
+    }
+
+    public function getInstitution(): ?Institution
+    {
+        return $this->institution;
+    }
+
+    public function setInstitution(?Institution $institution): static
+    {
+        $this->institution = $institution;
+
+        return $this;
+    }
+
+    /** @return Collection<int, Institution> */
+    public function getInstitutions(): Collection
+    {
+        return $this->institutions;
+    }
+
+    public function addInstitution(Institution $institution): static
+    {
+        if (!$this->institutions->contains($institution)) {
+            $this->institutions->add($institution);
+        }
+
+        return $this;
+    }
+
+    public function removeInstitution(Institution $institution): static
+    {
+        $this->institutions->removeElement($institution);
+
+        return $this;
+    }
+
+    public function getStudentSemester(): ?Semester
+    {
+        return $this->studentSemester;
+    }
+
+    public function setStudentSemester(?Semester $studentSemester): static
+    {
+        $this->studentSemester = $studentSemester;
+
+        return $this;
+    }
+
+    public function getStudentFormation(): ?Formation
+    {
+        return $this->studentFormation;
+    }
+
+    public function setStudentFormation(?Formation $studentFormation): static
+    {
+        $this->studentFormation = $studentFormation;
 
         return $this;
     }
