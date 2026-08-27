@@ -1,0 +1,51 @@
+services:
+  front:
+    build:
+      context: .
+      dockerfile: ./progressIA.app/Dockerfile.front
+    networks:
+      - web
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.progressia_front.rule=Host(`progressia.app`)
+      - traefik.http.routers.progressia_front.entrypoints=websecure
+      - traefik.http.routers.progressia_front.tls.certresolver=le
+      - traefik.http.services.progressia_front.loadbalancer.server.port=80
+
+  php:
+    build: ./php
+    volumes:
+      - ./progressIA.app/backend:/var/www
+    networks:
+      - internal
+      - shared_internal
+    restart: unless-stopped
+
+  api-nginx:
+    image: nginx:alpine
+    volumes:
+      - ./progressIA.app/backend:/var/www:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - internal
+      - web
+    restart: unless-stopped
+    depends_on:
+      - php
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.progressia_api.rule=Host(`api.progressia.app`)
+      - traefik.http.routers.progressia_api.entrypoints=websecure
+      - traefik.http.routers.progressia_api.tls.certresolver=le
+      - traefik.http.services.progressia_api.loadbalancer.server.port=80
+
+networks:
+  web:
+    external: true
+  shared_internal:
+    external: true
+  internal:
+    driver: bridge

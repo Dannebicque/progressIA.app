@@ -32,15 +32,38 @@ final class TeacherStudentStatsController
             throw new UnauthorizedHttpException('Bearer', 'Authentification requise.');
         }
 
-        if (!in_array('ROLE_TEACHER', $currentUser->getRoles(), true)) {
+        if (!$this->security->isGranted('ROLE_TEACHER')) {
             throw new AccessDeniedHttpException('Accès réservé aux enseignants.');
         }
 
-        // Fetch all users
-        $allUsers = $this->em->getRepository(User::class)->findAll();
+        // Fetch users using query builder to filter by institution/role
+        $qb = $this->em->getRepository(User::class)->createQueryBuilder('u');
+        
+        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
+            // Super Admin sees all users
+        } elseif ($this->security->isGranted('ROLE_SCHOOL_ADMIN')) {
+            $institution = $currentUser->getInstitution();
+            if (!$institution) {
+                return new JsonResponse([]);
+            }
+            $qb->andWhere('u.institution = :inst')
+               ->setParameter('inst', $institution);
+        } elseif ($this->security->isGranted('ROLE_TEACHER')) {
+            $institutions = $currentUser->getInstitutions();
+            if ($institutions->isEmpty()) {
+                return new JsonResponse([]);
+            }
+            $qb->andWhere('u.institution IN (:insts)')
+               ->setParameter('insts', $institutions);
+        }
+
+        $allUsers = $qb->getQuery()->getResult();
         $students = [];
         foreach ($allUsers as $u) {
-            if (!in_array('ROLE_TEACHER', $u->getRoles(), true)) {
+            // Add users that are not teachers/admins/superadmins
+            if (!in_array('ROLE_TEACHER', $u->getRoles(), true) &&
+                !in_array('ROLE_SCHOOL_ADMIN', $u->getRoles(), true) &&
+                !in_array('ROLE_SUPER_ADMIN', $u->getRoles(), true)) {
                 $students[] = $u;
             }
         }
@@ -197,8 +220,9 @@ final class TeacherStudentStatsController
                 'name' => $s->getName(),
                 'email' => $s->getEmail(),
                 'studentGroup' => $s->getStudentGroup() ?? '',
-                'studentYear' => $s->getStudentYear() ?? '',
-                'studentInstitution' => $s->getStudentInstitution() ?? '',
+                'studentYear' => $s->getStudentFormation() ? $s->getStudentFormation()->getName() : ($s->getStudentYear() ?? ''),
+                'studentInstitution' => $s->getInstitution() ? $s->getInstitution()->getName() : ($s->getStudentInstitution() ?? ''),
+                'studentSemester' => $s->getStudentSemester() ? $s->getStudentSemester()->getName() : '',
                 'points' => $s->getPoints(),
                 'badges' => $badges,
                 'courseStats' => $courseStats,

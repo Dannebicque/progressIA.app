@@ -1,5 +1,27 @@
 <template>
   <BackofficeLayout>
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Gestion des Étudiants</h1>
+        <p class="text-sm text-muted-foreground">Importez et gérez les comptes étudiants de la plateforme.</p>
+      </div>
+    </div>
+
+    <!-- Institution Selection for Super Admin -->
+    <Card v-if="auth.isSuperAdmin()" class="mb-6">
+      <CardContent class="pt-5 flex items-center gap-4">
+        <Label for="instSelect" class="font-semibold text-sm">Établissement géré :</Label>
+        <Select id="instSelect" v-model="etablissementFilter" class="max-w-xs">
+          <SelectTrigger><SelectValue placeholder="Tous les établissements" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les établissements</SelectItem>
+            <SelectItem v-for="inst in institutions" :key="inst.id" :value="inst.name">
+              {{ inst.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </CardContent>
+    </Card>
 
     <div class="grid gap-6 lg:grid-cols-3">
       <!-- COLUMN 1: Filters -->
@@ -8,7 +30,7 @@
           <CardTitle class="text-base">Filtres</CardTitle>
         </CardHeader>
         <CardContent class="space-y-3">
-          <div class="space-y-1.5">
+          <div v-if="!auth.isSuperAdmin()" class="space-y-1.5">
             <Label>Établissement</Label>
             <Select v-model="etablissementFilter">
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -171,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import BackofficeLayout from "@/components/BackofficeLayout.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -193,7 +215,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { showToast } from "@/composables/useToast";
-
+import { useAuthStore } from "@/stores/auth";
 import { api } from "@/api/client";
 
 
@@ -245,6 +267,7 @@ interface ImportError {
 }
 
 const students = ref<Student[]>([]);
+const auth = useAuthStore();
 const loading = ref(false);
 
 const etablissementFilter = ref("all");
@@ -262,6 +285,22 @@ const importSummary = ref<{
 
 
 
+interface Institution {
+  id: number
+  name: string
+}
+const institutions = ref<Institution[]>([])
+
+async function loadInstitutions() {
+  if (!auth.isSuperAdmin()) return
+  try {
+    const res = await api.get<Institution[]>("/api/institutions")
+    institutions.value = (res as any)["hydra:member"] || res
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 async function loadStudents() {
   loading.value = true;
   try {
@@ -275,25 +314,38 @@ async function loadStudents() {
   }
 }
 
-onMounted(() => {
-  loadStudents();
+onMounted(async () => {
+  await Promise.all([
+    loadStudents(),
+    loadInstitutions()
+  ]);
 });
 
 const etablissementOptions = computed(() =>
   [...new Set(students.value.map((s) => s.studentInstitution).filter(Boolean))].sort(),
 );
+const studentsOfSelectedInstitution = computed(() => {
+  if (etablissementFilter.value === "all") return students.value;
+  return students.value.filter((s) => s.studentInstitution === etablissementFilter.value);
+});
+
 const diplomeOptions = computed(() =>
-  [...new Set(students.value.map((s) => s.studentYear).filter(Boolean))].sort(),
+  [...new Set(studentsOfSelectedInstitution.value.map((s) => s.studentYear).filter(Boolean))].sort(),
 );
 const groupOptions = computed(() =>
   [
     ...new Set(
-      students.value.flatMap((s) =>
+      studentsOfSelectedInstitution.value.flatMap((s) =>
         s.studentGroup ? s.studentGroup.split(/[,/\-\s]+/).map((g) => g.trim()).filter(Boolean) : []
       )
     )
   ].sort(),
 );
+
+watch(etablissementFilter, () => {
+  diplomeFilter.value = "all";
+  selectedGroups.value = [];
+});
 
 const filteredStudents = computed(() =>
   students.value.filter((s) => {
@@ -332,58 +384,137 @@ function onFileSelected(event: Event) {
 
 async function runCsvImport() {
   if (!selectedFile.value) return;
+  
+  const instId = auth.user?.institution?.id;
+  if (!instId) {
+    showToast("Votre compte n'est pas lié à un établissement. Importation impossible.", "error");
+    return;
+  }
+
   const raw = await selectedFile.value.text();
   const { rows, errors: parsingErrors } = parseCsv(raw);
+
+  if (parsingErrors.length && !rows.length) {
+    importSummary.value = { imported: 0, totalRows: 0, errors: parsingErrors };
+    showToast("Erreur lors de la lecture du CSV", "error");
+    return;
+  }
 
   isImporting.value = true;
   importProgress.value = 0;
   const errors: ImportError[] = [...parsingErrors];
   let imported = 0;
-  const nextId = () => Math.max(0, ...students.value.map((s) => s.id)) + 1;
 
-  for (const [i, row] of rows.entries()) {
-    await wait(35);
-    const lineNumber = i + 2;
-    if (!isValidEmail(row.email)) {
-      errors.push({
-        line: lineNumber,
-        message: `Email invalide (${row.email})`,
-      });
-      importProgress.value = ((i + 1) / rows.length) * 100;
-      continue;
-    }
-    if (
-      students.value.some(
-        (s) => s.email.toLowerCase() === row.email.toLowerCase(),
-      )
-    ) {
-      errors.push({
-        line: lineNumber,
-        message: `Email déjà existant (${row.email})`,
-      });
-      importProgress.value = ((i + 1) / rows.length) * 100;
-      continue;
+  try {
+    // 1. Fetch current Semesters & Formations to build cache
+    const [semsRes, formsRes] = await Promise.all([
+      api.get<any[]>("/api/semesters"),
+      api.get<any[]>("/api/formations")
+    ]);
+    const allSems = (semsRes as any)["hydra:member"] || semsRes;
+    const allForms = (formsRes as any)["hydra:member"] || formsRes;
+
+    const semesterCache: Record<string, string> = {};
+    for (const s of allSems) {
+      if (s.institution && String(s.institution.id) === String(instId)) {
+        semesterCache[s.name.toLowerCase().trim()] = `/api/semesters/${s.id}`;
+      }
     }
 
-    students.value.push({
-      id: nextId(),
-      name: `${row.firstName} ${row.lastName}`,
-      email: row.email,
-      studentGroup: row.groupes.join(', '),
-      studentYear: row.diplome,
-      studentInstitution: row.etablissement,
-      points: 0,
-      badges: [],
-      courseStats: []
-    });
-    imported += 1;
-    importProgress.value = ((i + 1) / rows.length) * 100;
+    const formationCache: Record<string, string> = {};
+    for (const f of allForms) {
+      if (f.institution && String(f.institution.id) === String(instId)) {
+        formationCache[f.name.toLowerCase().trim()] = `/api/formations/${f.id}`;
+      }
+    }
+
+    // 2. Loop through CSV rows and sync to backend
+    for (const [i, row] of rows.entries()) {
+      const lineNumber = i + 2;
+      
+      if (!isValidEmail(row.email)) {
+        errors.push({
+          line: lineNumber,
+          message: `Email invalide (${row.email})`,
+        });
+        importProgress.value = ((i + 1) / rows.length) * 100;
+        continue;
+      }
+
+      try {
+        // Resolve or create Semester
+        const semKey = row.anneeUniversitaire.toLowerCase().trim();
+        let semIri = semesterCache[semKey];
+        if (!semIri) {
+          const newSem = await api.post<any>("/api/semesters", {
+            name: row.anneeUniversitaire.trim(),
+            institution: `/api/institutions/${instId}`
+          });
+          semIri = `/api/semesters/${newSem.id}`;
+          semesterCache[semKey] = semIri;
+        }
+
+        // Resolve or create Formation
+        const formKey = row.diplome.toLowerCase().trim();
+        let formIri = formationCache[formKey];
+        if (!formIri) {
+          const newForm = await api.post<any>("/api/formations", {
+            name: row.diplome.trim(),
+            institution: `/api/institutions/${instId}`
+          });
+          formIri = `/api/formations/${newForm.id}`;
+          formationCache[formKey] = formIri;
+        }
+
+        // Check if student already exists in our loaded list
+        const existingStudent = students.value.find(
+          (s) => s.email.toLowerCase() === row.email.toLowerCase()
+        );
+
+        const userPayload: any = {
+          name: `${row.firstName} ${row.lastName}`.trim(),
+          studentGroup: row.groupes.join(', '),
+          studentSemester: semIri,
+          studentFormation: formIri
+        };
+
+        if (existingStudent) {
+          // Update existing student
+          await api.patch(`/api/users/${existingStudent.id}`, userPayload);
+        } else {
+          // Create new student
+          await api.post("/api/users", {
+            ...userPayload,
+            email: row.email.trim(),
+            password: "student", // default password
+            roles: ["ROLE_STUDENT"],
+            institution: `/api/institutions/${instId}`
+          });
+        }
+
+        imported += 1;
+      } catch (e: any) {
+        console.error(e);
+        errors.push({
+          line: lineNumber,
+          message: e.body?.detail || e.message || "Erreur serveur lors de la création/mise à jour."
+        });
+      }
+
+      importProgress.value = ((i + 1) / rows.length) * 100;
+    }
+
+    // Refresh student list from server
+    await loadStudents();
+  } catch (e: any) {
+    console.error(e);
+    showToast("Une erreur critique est survenue lors de l'import", "error");
+  } finally {
+    isImporting.value = false;
+    importSummary.value = { imported, totalRows: rows.length, errors };
+    if (!errors.length) showToast("Import CSV terminé");
+    else showToast("Import CSV terminé avec erreurs");
   }
-
-  isImporting.value = false;
-  importSummary.value = { imported, totalRows: rows.length, errors };
-  if (!errors.length) showToast("Import CSV terminé");
-  else showToast("Import CSV terminé avec erreurs");
 }
 
 function parseCsv(raw: string): {

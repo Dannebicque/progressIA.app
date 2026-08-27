@@ -92,12 +92,40 @@ class Course
     #[Groups(['course:read'])]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    /** @var Collection<int, Institution> */
+    #[ORM\ManyToMany(targetEntity: Institution::class, inversedBy: 'courses')]
+    #[ORM\JoinTable(name: 'course_institution')]
+    #[Groups(['course:read', 'course:write'])]
+    private Collection $institutions;
+
+    /** @var Collection<int, Semester> */
+    #[ORM\ManyToMany(targetEntity: Semester::class, inversedBy: 'courses')]
+    #[ORM\JoinTable(name: 'course_semester')]
+    #[Groups(['course:read', 'course:write'])]
+    private Collection $semesters;
+
+    /** @var Collection<int, Formation> */
+    #[ORM\ManyToMany(targetEntity: Formation::class, inversedBy: 'courses')]
+    #[ORM\JoinTable(name: 'course_formation')]
+    #[Groups(['course:read', 'course:write'])]
+    private Collection $formations;
+
+    /** @var Collection<int, User> */
+    #[ORM\ManyToMany(targetEntity: User::class)]
+    #[ORM\JoinTable(name: 'course_teacher')]
+    #[Groups(['course:read', 'course:write'])]
+    private Collection $teachers;
+
     public function __construct()
     {
         $this->sessions = new ArrayCollection();
         $this->emailTemplates = new ArrayCollection();
         $this->sentEmails = new ArrayCollection();
         $this->updatedAt = new \DateTimeImmutable();
+        $this->institutions = new ArrayCollection();
+        $this->semesters = new ArrayCollection();
+        $this->formations = new ArrayCollection();
+        $this->teachers = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -262,5 +290,93 @@ class Course
     public function getSentEmails(): Collection
     {
         return $this->sentEmails;
+    }
+
+    /** @return Collection<int, Institution> */
+    public function getInstitutions(): Collection
+    {
+        return $this->institutions;
+    }
+
+    public function addInstitution(Institution $institution): static
+    {
+        if (!$this->institutions->contains($institution)) {
+            $this->institutions->add($institution);
+        }
+
+        return $this;
+    }
+
+    public function removeInstitution(Institution $institution): static
+    {
+        $this->institutions->removeElement($institution);
+
+        return $this;
+    }
+
+    /** @return Collection<int, Semester> */
+    public function getSemesters(): Collection
+    {
+        return $this->semesters;
+    }
+
+    public function addSemester(Semester $semester): static
+    {
+        if (!$this->semesters->contains($semester)) {
+            $this->semesters->add($semester);
+        }
+
+        return $this;
+    }
+
+    public function removeSemester(Semester $semester): static
+    {
+        $this->semesters->removeElement($semester);
+
+        return $this;
+    }
+
+    /** @return Collection<int, Formation> */
+    public function getFormations(): Collection
+    {
+        return $this->formations;
+    }
+
+    public function addFormation(Formation $formation): static
+    {
+        if (!$this->formations->contains($formation)) {
+            $this->formations->add($formation);
+        }
+
+        return $this;
+    }
+
+    public function removeFormation(Formation $formation): static
+    {
+        $this->formations->removeElement($formation);
+
+        return $this;
+    }
+
+    /** @return Collection<int, User> */
+    public function getTeachers(): Collection
+    {
+        return $this->teachers;
+    }
+
+    public function addTeacher(User $teacher): static
+    {
+        if (!$this->teachers->contains($teacher)) {
+            $this->teachers->add($teacher);
+        }
+
+        return $this;
+    }
+
+    public function removeTeacher(User $teacher): static
+    {
+        $this->teachers->removeElement($teacher);
+
+        return $this;
     }
 }

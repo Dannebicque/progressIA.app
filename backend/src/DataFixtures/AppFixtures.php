@@ -12,6 +12,10 @@ use App\Entity\Session;
 use App\Entity\User;
 use App\Entity\PageCompletion;
 use App\Entity\EvaluationAttempt;
+use App\Entity\Institution;
+use App\Entity\Semester;
+use App\Entity\Formation;
+use App\Entity\LandingConfig;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -25,6 +29,10 @@ class AppFixtures extends Fixture
     ];
 
     private ?User $demoStudent = null;
+    private ?User $demoTeacher = null;
+    private array $instMap = [];
+    private array $semMap = [];
+    private array $formMap = [];
 
     public function __construct(private readonly UserPasswordHasherInterface $hasher)
     {
@@ -36,6 +44,7 @@ class AppFixtures extends Fixture
         $this->loadMockCourses($manager);
         $this->loadDemoCourses($manager);
         $this->loadBatmanCourse($manager);
+        $this->loadLandingConfig($manager);
 
         $manager->flush();
 
@@ -46,9 +55,53 @@ class AppFixtures extends Fixture
 
     private function loadUsers(ObjectManager $manager): void
     {
-        $teacher = (new User())->setEmail('teacher@progressia.test')->setName('Prof. Démo')->setRoles(['ROLE_TEACHER']);
+        // Institutions
+        $bordeaux = (new Institution())
+            ->setName('IUT de Bordeaux')
+            ->setSubscriptionFee('500.00')
+            ->setCostPerStudent('10.00')
+            ->setEmailDomains(['progressia.test', 'etu.univ-bordeaux.fr'])
+            ->setInvitationCode('BORD2026');
+        $bayonne = (new Institution())
+            ->setName('IUT de Bayonne')
+            ->setSubscriptionFee('300.00')
+            ->setCostPerStudent('8.00')
+            ->setEmailDomains(['bayonne.test'])
+            ->setInvitationCode('BAY2026');
+        $manager->persist($bordeaux);
+        $manager->persist($bayonne);
+        $this->instMap['IUT de Bordeaux'] = $bordeaux;
+        $this->instMap['IUT de Bayonne'] = $bayonne;
+
+        // Semesters
+        $s1 = (new Semester())->setName('S1')->setInstitution($bordeaux);
+        $s2 = (new Semester())->setName('S2')->setInstitution($bordeaux);
+        $s3 = (new Semester())->setName('BUT2 - MMI - S3')->setInstitution($bordeaux);
+        $manager->persist($s1);
+        $manager->persist($s2);
+        $manager->persist($s3);
+        $this->semMap['S1'] = $s1;
+        $this->semMap['S2'] = $s2;
+        $this->semMap['BUT2 - MMI - S3'] = $s3;
+
+        // Formations
+        $mmi = (new Formation())->setName('MMI')->setInstitution($bordeaux);
+        $info = (new Formation())->setName('Informatique')->setInstitution($bordeaux);
+        $manager->persist($mmi);
+        $manager->persist($info);
+        $this->formMap['MMI'] = $mmi;
+        $this->formMap['Informatique'] = $info;
+
+        // Users
+        $teacher = (new User())
+            ->setEmail('teacher@progressia.test')
+            ->setName('Prof. Démo')
+            ->setRoles(['ROLE_TEACHER'])
+            ->addInstitution($bordeaux)
+            ->addInstitution($bayonne);
         $teacher->setPassword($this->hasher->hashPassword($teacher, 'teacher'));
         $manager->persist($teacher);
+        $this->demoTeacher = $teacher;
 
         $student = (new User())
             ->setEmail('student@progressia.test')
@@ -56,10 +109,28 @@ class AppFixtures extends Fixture
             ->setRoles(['ROLE_STUDENT'])
             ->setStudentGroup('TD1 - TP2')
             ->setStudentYear('BUT2 - MMI')
-            ->setStudentInstitution('IUT de Bordeaux');
+            ->setStudentInstitution('IUT de Bordeaux')
+            ->setInstitution($bordeaux)
+            ->setStudentSemester($s3)
+            ->setStudentFormation($mmi);
         $student->setPassword($this->hasher->hashPassword($student, 'student'));
         $manager->persist($student);
         $this->demoStudent = $student;
+
+        $schoolAdmin = (new User())
+            ->setEmail('admin@progressia.test')
+            ->setName('Responsable Démo')
+            ->setRoles(['ROLE_SCHOOL_ADMIN'])
+            ->setInstitution($bordeaux);
+        $schoolAdmin->setPassword($this->hasher->hashPassword($schoolAdmin, 'admin'));
+        $manager->persist($schoolAdmin);
+
+        $superAdmin = (new User())
+            ->setEmail('owner@progressia.test')
+            ->setName('Super Admin')
+            ->setRoles(['ROLE_SUPER_ADMIN']);
+        $superAdmin->setPassword($this->hasher->hashPassword($superAdmin, 'owner'));
+        $manager->persist($superAdmin);
     }
 
     private function loadMockCourses(ObjectManager $manager): void
@@ -79,7 +150,10 @@ class AppFixtures extends Fixture
                 ->setAccentColor($c['accentColor'] ?? null)
                 ->setLevel($c['level'] ?? null)
                 ->setScenario($c['scenario'] ?? null)
-                ->setUpdatedAt((new \DateTimeImmutable())->modify("-{$i} days"));
+                ->setUpdatedAt((new \DateTimeImmutable())->modify("-{$i} days"))
+                ->addInstitution($this->instMap['IUT de Bordeaux'])
+                ->addSemester($this->semMap['BUT2 - MMI - S3'])
+                ->addTeacher($this->demoTeacher);
             $i++;
             $manager->persist($course);
 
@@ -119,7 +193,10 @@ class AppFixtures extends Fixture
             ->setTitle('Vue 3 — Composants & réactivité')->setTheme('Frontend')->setCategory('front')
             ->setContext('Développement Front')->setAccentColor('#06b6d4')->setLevel('Intermédiaire')
             ->setScenario('Construire des interfaces réactives avec Vue 3 et la Composition API')
-            ->setUpdatedAt((new \DateTimeImmutable())->modify('-5 hours'));
+            ->setUpdatedAt((new \DateTimeImmutable())->modify('-5 hours'))
+            ->addInstitution($this->instMap['IUT de Bordeaux'])
+            ->addSemester($this->semMap['BUT2 - MMI - S3'])
+            ->addTeacher($this->demoTeacher);
         $manager->persist($front);
         $s = (new Session())->setTitle('Séance 1 — Les bases de Vue')->setPitch('Composants, props, réactivité')->setPosition(0)->setRenderConfig(self::DEFAULT_RENDER_CONFIG);
         $front->addSession($s);
@@ -178,7 +255,10 @@ class AppFixtures extends Fixture
             ->setTitle('Symfony + Vue — Application fullstack')->setTheme('Fullstack')->setCategory('fullstack')
             ->setContext('Développement Fullstack')->setAccentColor('#8b5cf6')->setLevel('Avancé')
             ->setScenario('Relier une API Symfony à un front Vue avec authentification JWT')
-            ->setUpdatedAt((new \DateTimeImmutable())->modify('-2 hours'));
+            ->setUpdatedAt((new \DateTimeImmutable())->modify('-2 hours'))
+            ->addInstitution($this->instMap['IUT de Bordeaux'])
+            ->addSemester($this->semMap['BUT2 - MMI - S3'])
+            ->addTeacher($this->demoTeacher);
         $manager->persist($full);
         $s2 = (new Session())->setTitle('Séance 1 — API découplée')->setPitch('REST, JWT, CORS')->setPosition(0)->setRenderConfig(self::DEFAULT_RENDER_CONFIG);
         $full->addSession($s2);
@@ -252,7 +332,10 @@ class AppFixtures extends Fixture
             ->setAccentColor('#f59e0b')
             ->setLevel('BUT2')
             ->setScenario("Accompagné par Alfred, le majordome de Wayne Manor, démarrez la boutique en ligne de Batman Corp en Symfony : projet, entité, base de données, catalogue.")
-            ->setUpdatedAt((new \DateTimeImmutable())->modify('-1 hours'));
+            ->setUpdatedAt((new \DateTimeImmutable())->modify('-1 hours'))
+            ->addInstitution($this->instMap['IUT de Bordeaux'])
+            ->addSemester($this->semMap['BUT2 - MMI - S3'])
+            ->addTeacher($this->demoTeacher);
         $manager->persist($course);
 
         $session = $this->makeSession($manager, $course, 0, 'Séance 1 — Démarrer la boutique en Symfony', 'Du projet vide au premier catalogue, guidé par Alfred.');
@@ -589,5 +672,56 @@ MD);
                 }
             }
         }
+    }
+
+    private function loadLandingConfig(ObjectManager $manager): void
+    {
+        $config = new LandingConfig();
+        $config->setHeroTitle("Créez des cours engageants et gamifiés");
+        $config->setHeroSubtitle("Rédigez en Markdown, suivez la progression et récompensez vos apprenants avec points & badges.");
+        $config->setPlansJson([
+            [
+                'name' => 'Pack Classique',
+                'description' => 'Idéal pour démarrer avec la gamification standard de vos cours.',
+                'priceFixed' => '300.00',
+                'pricePerStudent' => '5.00',
+                'features' => [
+                    'Multi-Établissements & Cloisonnement des données',
+                    'Identité Visuelle Propre & Charte graphique de l\'école',
+                    'Suivi & Statistiques Globales par promotion',
+                    'Souveraineté des Données (Hébergement RGPD)',
+                    'Support Standard par email'
+                ]
+            ],
+            [
+                'name' => 'Pack IA Démo (Groq/Llama)',
+                'description' => 'Intégrez la puissance de l\'IA ProgressIA pour corriger et guider vos étudiants.',
+                'priceFixed' => '500.00',
+                'pricePerStudent' => '8.00',
+                'features' => [
+                    'Tous les outils du Pack Classique',
+                    'Analyse automatique d\'exercices par IA',
+                    'Correction et explications Llama 3 en temps réel',
+                    'Suivi détaillé de la consommation de jetons',
+                    'Facturation mensuelle basée sur l\'usage IA'
+                ]
+            ],
+            [
+                'name' => 'Pack IA Enterprise (SSO & Propre API)',
+                'description' => 'Branchez vos propres clés d\'API (OpenAI, Claude) sans surcoût plateforme et intégrez ProgressIA à votre ENT.',
+                'priceFixed' => '800.00',
+                'pricePerStudent' => '10.00',
+                'features' => [
+                    'Tous les outils du Pack Classique',
+                    'Prise en charge de vos clés d\'API personnelles',
+                    'Pas de frais supplémentaires sur l\'usage de jetons',
+                    'Sélection libre du modèle (GPT-4o, Claude 3.5)',
+                    'SSO & Connexion ENT (CAS, Shibboleth, OAuth)',
+                    'Support Premium 24h/24 & 7j/7'
+                ]
+            ]
+        ]);
+
+        $manager->persist($config);
     }
 }

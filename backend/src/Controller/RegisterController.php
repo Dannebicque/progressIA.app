@@ -33,6 +33,7 @@ final class RegisterController
         $email = trim((string) ($data['email'] ?? ''));
         $password = (string) ($data['password'] ?? '');
         $name = trim((string) ($data['name'] ?? ''));
+        $invitationCode = trim((string) ($data['invitationCode'] ?? ''));
 
         $errors = [];
         if ('' === $name) {
@@ -52,11 +53,39 @@ final class RegisterController
             return new JsonResponse(['errors' => ['email' => 'Un compte existe déjà avec cet email.']], JsonResponse::HTTP_CONFLICT);
         }
 
+        $institution = null;
+        if ('' !== $invitationCode) {
+            $institution = $this->em->getRepository(\App\Entity\Institution::class)->findOneBy(['invitationCode' => $invitationCode]);
+            if (!$institution) {
+                return new JsonResponse(['errors' => ['invitationCode' => 'Code d\'invitation invalide.']], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+            }
+        } else {
+            // Auto-detect based on email domain
+            $parts = explode('@', $email);
+            if (count($parts) === 2) {
+                $domain = strtolower($parts[1]);
+                $allInsts = $this->em->getRepository(\App\Entity\Institution::class)->findAll();
+                foreach ($allInsts as $inst) {
+                    $domains = $inst->getEmailDomains() ?: [];
+                    foreach ($domains as $d) {
+                        if (strtolower(trim($d)) === $domain) {
+                            $institution = $inst;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+
         $user = (new User())
             ->setEmail($email)
             ->setName($name)
             ->setRoles(['ROLE_STUDENT']);
         $user->setPassword($this->hasher->hashPassword($user, $password));
+
+        if ($institution) {
+            $user->setInstitution($institution);
+        }
 
         $violations = $this->validator->validate($user);
         if (count($violations) > 0) {
@@ -82,6 +111,10 @@ final class RegisterController
             'name' => $user->getName(),
             'roles' => $user->getRoles(),
             'points' => $user->getPoints(),
+            'institution' => $user->getInstitution() ? [
+                'id' => $user->getInstitution()->getId(),
+                'name' => $user->getInstitution()->getName(),
+            ] : null,
         ];
     }
 }

@@ -31,6 +31,12 @@
                                 autocomplete="new-password" :aria-invalid="!!fieldErrors.password || undefined" />
                             <p v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password }}</p>
                         </div>
+                        <div class="space-y-2">
+                            <Label for="invitationCode">Code d'invitation (Optionnel)</Label>
+                            <Input id="invitationCode" v-model="invitationCode" placeholder="Ex: BORD2026"
+                                :aria-invalid="!!fieldErrors.invitationCode || undefined" />
+                            <p v-if="fieldErrors.invitationCode" class="text-xs text-destructive">{{ fieldErrors.invitationCode }}</p>
+                        </div>
                         <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
                         <Button type="submit" class="w-full" :disabled="loading">
                             <IconLoader2 v-if="loading" class="size-4 animate-spin" />
@@ -61,6 +67,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 const name = ref('')
 const email = ref('')
 const password = ref('')
+const invitationCode = ref('')
 const error = ref('')
 const fieldErrors = ref<Record<string, string>>({})
 const loading = ref(false)
@@ -72,7 +79,7 @@ async function submit() {
     fieldErrors.value = {}
     loading.value = true
     try {
-        await auth.register(name.value, email.value, password.value)
+        await auth.register(name.value, email.value, password.value, invitationCode.value.trim())
         router.push('/')
     } catch (e) {
         if (e instanceof ApiError && (e.status === 422 || e.status === 409)) {

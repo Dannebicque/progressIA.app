@@ -33,7 +33,7 @@ final class TeacherEmailController
             throw new UnauthorizedHttpException('Bearer', 'Authentification requise.');
         }
 
-        if (!in_array('ROLE_TEACHER', $currentUser->getRoles(), true)) {
+        if (!$this->security->isGranted('ROLE_TEACHER')) {
             throw new AccessDeniedHttpException('Accès réservé aux enseignants.');
         }
 
