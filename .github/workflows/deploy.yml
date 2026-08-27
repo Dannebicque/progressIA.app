@@ -64,7 +64,7 @@ jobs:
       # Déploiement de l'intégralité du monorepo dans le dossier progressIA.app du VPS
       - name: Deploy codebase via rsync
         run: |
-          rsync -avz -e "ssh -p ${{ secrets.SSH_PORT || '22' }}" \
+          rsync -rlptvz -e "ssh -p ${{ secrets.SSH_PORT || '22' }}" \
             --exclude='node_modules/' \
             --exclude='vendor/' \
             --exclude='backend/vendor/' \
