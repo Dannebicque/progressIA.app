@@ -35,7 +35,7 @@ jobs:
       mariadb:
         image: mariadb:11.4
         env:
-          MARIADB_DATABASE: progressia
+          MARIADB_DATABASE: progressia_test
           MARIADB_USER: progressia
           MARIADB_PASSWORD: progressia
           MARIADB_ROOT_PASSWORD: rootpwd
