@@ -13,6 +13,11 @@ dist-ssr
 coverage
 *.local
 
+# Production deployment state / secrets
+.env.prod.local
+.env.version
+jwt/
+
 # Vite / TS
 *.tsbuildinfo
 
