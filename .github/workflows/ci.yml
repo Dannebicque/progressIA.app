@@ -54,7 +54,10 @@ jobs:
     env:
       APP_ENV: test
       APP_SECRET: ci-secret
-      DATABASE_URL: mysql://progressia:progressia@127.0.0.1:3306/progressia_test?serverVersion=11.4.0-MariaDB&charset=utf8mb4
+      # Doctrine appends `_test` in the test environment via doctrine.yaml.
+      # Point the base URL at `progressia`; the effective database is therefore
+      # `progressia_test`, which is the database created by the MariaDB service.
+      DATABASE_URL: mysql://progressia:progressia@127.0.0.1:3306/progressia?serverVersion=11.4.0-MariaDB&charset=utf8mb4
 
     steps:
       - name: Checkout
@@ -81,7 +84,7 @@ jobs:
 
       - name: Show database and Doctrine versions
         run: |
-          php -r '$u=parse_url(getenv("DATABASE_URL")); $pdo=new PDO("mysql:host=".$u["host"].";port=".($u["port"] ?? 3306).";dbname=".ltrim($u["path"], "/"), $u["user"], $u["pass"]); echo "Database version: ".$pdo->query("SELECT VERSION()")->fetchColumn().PHP_EOL;'
+          php -r '$u=parse_url(getenv("DATABASE_URL")); $pdo=new PDO("mysql:host=".$u["host"].";port=".($u["port"] ?? 3306).";dbname=".ltrim($u["path"], "/")."_test", $u["user"], $u["pass"]); echo "Database version: ".$pdo->query("SELECT VERSION()")->fetchColumn().PHP_EOL;'
           composer show doctrine/dbal
           composer show doctrine/migrations
           composer show doctrine/orm
