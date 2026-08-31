@@ -128,16 +128,17 @@ jobs:
 
             $COMPOSE pull
 
-            # Query MariaDB directly through PDO. DoctrineBundle 4 no longer
-            # exposes the doctrine:query:sql console command.
-            $COMPOSE run --rm --no-deps php php -r \
-              '$u=parse_url(getenv("DATABASE_URL")); $pdo=new PDO("mysql:host=".$u["host"].";port=".($u["port"] ?? 3306).";dbname=".ltrim($u["path"], "/"), $u["user"], $u["pass"]); echo "Database version: ".$pdo->query("SELECT VERSION()")->fetchColumn().PHP_EOL;'
-
             $COMPOSE run --rm --no-deps php sh -lc \
               'composer show doctrine/dbal; composer show doctrine/migrations; composer show doctrine/orm'
 
             $COMPOSE run --rm --no-deps php \
               php bin/console lexik:jwt:generate-keypair --skip-if-exists
+
+            # Diagnose Doctrine's production schema introspection table by table.
+            # The command prints the exact object(s) that trigger DBAL failures
+            # such as TableEditor::setOptions(null) and stops deployment safely.
+            $COMPOSE run --rm --no-deps php \
+              php bin/console app:diagnose-schema
 
             # Migrations must succeed before the new application containers are
             # put online. A failure leaves the currently running version intact.
