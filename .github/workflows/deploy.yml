@@ -128,11 +128,10 @@ jobs:
 
             $COMPOSE pull
 
-            # Preflight the new API image before replacing the running containers.
-            # This also logs the real database and Doctrine versions, which makes
-            # MariaDB/DBAL schema-introspection failures actionable.
-            $COMPOSE run --rm --no-deps php \
-              php bin/console doctrine:query:sql "SELECT VERSION() AS database_version"
+            # Query MariaDB directly through PDO. DoctrineBundle 4 no longer
+            # exposes the doctrine:query:sql console command.
+            $COMPOSE run --rm --no-deps php php -r \
+              '$u=parse_url(getenv("DATABASE_URL")); $pdo=new PDO("mysql:host=".$u["host"].";port=".($u["port"] ?? 3306).";dbname=".ltrim($u["path"], "/"), $u["user"], $u["pass"]); echo "Database version: ".$pdo->query("SELECT VERSION()")->fetchColumn().PHP_EOL;'
 
             $COMPOSE run --rm --no-deps php sh -lc \
               'composer show doctrine/dbal; composer show doctrine/migrations; composer show doctrine/orm'
