@@ -1,0 +1,47 @@
+services:
+  front:
+    image: ghcr.io/dannebicque/progressia-front:${APP_VERSION}
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.progressia_front.rule=Host(`progressia.app`)
+      - traefik.http.routers.progressia_front.entrypoints=websecure
+      - traefik.http.routers.progressia_front.tls.certresolver=le
+      - traefik.http.services.progressia_front.loadbalancer.server.port=80
+
+  php:
+    image: ghcr.io/dannebicque/progressia-api:${APP_VERSION}
+    restart: unless-stopped
+    env_file:
+      - .env.prod.local
+    volumes:
+      - ./jwt:/var/www/config/jwt
+    networks:
+      - internal
+      - shared_internal
+
+  api-nginx:
+    image: ghcr.io/dannebicque/progressia-api-nginx:${APP_VERSION}
+    restart: unless-stopped
+    networks:
+      - internal
+      - web
+    depends_on:
+      - php
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.progressia_api.rule=Host(`api.progressia.app`)
+      - traefik.http.routers.progressia_api.entrypoints=websecure
+      - traefik.http.routers.progressia_api.tls.certresolver=le
+      - traefik.http.services.progressia_api.loadbalancer.server.port=80
+
+networks:
+  web:
+    external: true
+  shared_internal:
+    external: true
+  internal:
