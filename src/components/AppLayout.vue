@@ -67,7 +67,7 @@
                 </div>
 
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 text-xs text-muted-foreground">
-                    <p>© {{ currentYear }} ProgressIA. Tous droits réservés.</p>
+                    <p>© {{ currentYear }} ProgressIA. Tous droits réservés. <span class="opacity-70 text-[10px]">v{{ version }}</span></p>
                     <p class="flex items-center gap-1">Conçu avec passion pour l'éducation moderne ✨</p>
                 </div>
             </div>
@@ -86,6 +86,7 @@ import ConfirmDialog from './ConfirmDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
 
 const currentYear = computed(() => new Date().getFullYear())
+const version = __APP_VERSION__
 </script>
 
 <style scoped></style>
