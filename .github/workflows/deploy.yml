@@ -1,86 +1,105 @@
-name: Build & Deploy to VPS (Docker)
+name: Deploy production
 
 on:
-  push:
-    branches:
-      - main  # Déclenche le déploiement lors d'un push sur la branche main. Modifiez si besoin.
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: progressia-production
+  cancel-in-progress: false
 
 jobs:
-  build-frontend:
-    name: Build Frontend (Test)
+  build-and-deploy:
+    name: Build images and deploy
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@v7
         with:
-          node-version: 24
-          cache: 'npm'
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
-      - name: Build frontend production assets (Validation)
-        run: npm run build-only
-
-  test-backend:
-    name: Validate Backend (Symfony)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+      - name: Login to GHCR
+        uses: docker/login-action@v4
         with:
-          php-version: '8.4'
-          extensions: mbstring, xml, ctype, iconv
-          coverage: none
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Validate composer.json
-        run: composer validate --strict
-        working-directory: backend
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/front/Dockerfile
+          push: true
+          build-args: |
+            VITE_API_URL=https://api.progressia.app
+          tags: |
+            ghcr.io/dannebicque/progressia-front:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/dannebicque/progressia-front:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to VPS (Docker)
-    needs: [build-frontend, test-backend]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
+      - name: Build and push API image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/php/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/dannebicque/progressia-api:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/dannebicque/progressia-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Install SSH Key
+      - name: Build and push API nginx image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/nginx/Dockerfile.api
+          push: true
+          tags: |
+            ghcr.io/dannebicque/progressia-api-nginx:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/dannebicque/progressia-api-nginx:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: 'placeholder'
+          known_hosts: placeholder
           if_key_exists: replace
 
-      - name: Adding Known Hosts
+      - name: Add VPS host key
         run: ssh-keyscan -p ${{ secrets.SSH_PORT || '22' }} -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      # Déploiement de l'intégralité du monorepo dans le dossier progressIA.app du VPS
-      - name: Deploy codebase via rsync
+      - name: Copy production compose file
         run: |
-          rsync -rlptvz -e "ssh -p ${{ secrets.SSH_PORT || '22' }}" \
-            --exclude='node_modules/' \
-            --exclude='vendor/' \
-            --exclude='backend/vendor/' \
-            --exclude='backend/var/' \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='backend/.env.local' \
-            --exclude='backend/.env.dev' \
-            --exclude='backend/.env.test' \
-            --exclude='backend/config/jwt/' \
-            --delete \
-            ./ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.TARGET_COMPOSE_DIR || '/var/www/progressia' }}/progressIA.app/
+          ssh -p "${{ secrets.SSH_PORT || '22' }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "mkdir -p '${{ secrets.TARGET_COMPOSE_DIR || '/var/www/progressia' }}'"
 
-      # Commandes post-déploiement sur le VPS pour reconstruire le front et mettre à jour le back dans Docker
-      - name: Execute post-deployment commands on VPS (Docker)
+          rsync -rlptvz \
+            -e "ssh -p ${{ secrets.SSH_PORT || '22' }}" \
+            compose.prod.yaml \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.TARGET_COMPOSE_DIR || '/var/www/progressia' }}/compose.prod.yaml"
+
+      - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -88,21 +107,57 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || '22' }}
           script: |
-            # Se déplacer dans le dossier contenant le docker-compose.yml
-            cd ${{ secrets.TARGET_COMPOSE_DIR || '/var/www/progressia' }}
-            
-            # Recompiler et redémarrer le conteneur frontend
-            docker compose up -d --build front
-            
-            # Mettre à jour les dépendances composer à l'intérieur du conteneur PHP
-            docker compose exec -T php composer install --no-dev --optimize-autoloader --no-interaction
-            
-            # Exécuter les migrations de base de données à l'intérieur du conteneur PHP
-            docker compose exec -T php php bin/console doctrine:migrations:migrate --no-interaction
-            
-            # Générer la paire de clés JWT si elle n'existe pas
-            docker compose exec -T php php bin/console lexik:jwt:generate-keypair --skip-if-exists
-            
-            # Nettoyer et pré-chauffer le cache Symfony à l'intérieur du conteneur PHP
-            docker compose exec -T php php bin/console cache:clear --env=prod
-            docker compose exec -T php php bin/console cache:warmup --env=prod
+            set -e
+
+            cd "${{ secrets.TARGET_COMPOSE_DIR || '/var/www/progressia' }}"
+
+            test -f .env.prod.local || {
+              echo ".env.prod.local is missing on the VPS"
+              exit 1
+            }
+
+            mkdir -p jwt
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io \
+              -u "${{ secrets.GHCR_USERNAME }}" \
+              --password-stdin
+
+            echo "APP_VERSION=${{ github.event.workflow_run.head_sha }}" > .env.version
+
+            docker compose \
+              --env-file .env.version \
+              -f compose.prod.yaml \
+              pull
+
+            docker compose \
+              --env-file .env.version \
+              -f compose.prod.yaml \
+              up -d
+
+            docker compose \
+              --env-file .env.version \
+              -f compose.prod.yaml \
+              exec -T php \
+              php bin/console lexik:jwt:generate-keypair --skip-if-exists
+
+            docker compose \
+              --env-file .env.version \
+              -f compose.prod.yaml \
+              exec -T php \
+              php bin/console doctrine:migrations:migrate \
+              --no-interaction \
+              --allow-no-migration
+
+            docker compose \
+              --env-file .env.version \
+              -f compose.prod.yaml \
+              exec -T php \
+              php bin/console cache:clear --env=prod
+
+            docker compose \
+              --env-file .env.version \
+              -f compose.prod.yaml \
+              exec -T php \
+              php bin/console cache:warmup --env=prod
+
+            docker image prune -f
