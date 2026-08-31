@@ -1,99 +1,171 @@
 # ProgressIA
 
-This template should help get you started developing with Vue 3 in Vite.
+ProgressIA est une application Vue 3 avec un backend Symfony 8 / API Platform.
 
-## Recommended IDE Setup
+## Architecture
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- Frontend : Vue 3, TypeScript, Vite, Pinia, Tailwind CSS.
+- Backend : Symfony 8.1, API Platform, Doctrine ORM, JWT.
+- Base de données : MariaDB.
+- Développement : Docker Compose avec hot reload Vite et sources Symfony montées en volume.
+- Production : images Docker immuables publiées sur GHCR et routées par Traefik.
 
-## Recommended Browser Setup
+Le frontend reste à la racine du dépôt. Le backend Symfony se trouve dans `backend/`.
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+## Développement avec Docker
 
-## Type Support for `.vue` Imports in TS
+La configuration de développement est définie dans `compose.yaml`.
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+```sh
+docker compose up -d
+```
 
-## Customize configuration
+Au premier démarrage, Docker installe automatiquement les dépendances Composer et npm et génère les clés JWT de développement si elles n'existent pas.
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+Services :
 
-## Project Setup
+- Front Vue / Vite : http://localhost:5173
+- API Symfony : http://localhost:8080
+- Documentation API Platform : http://localhost:8080/api
+- MariaDB : accessible uniquement sur le réseau Docker interne
+
+Commandes utiles :
+
+```sh
+# Logs
+docker compose logs -f
+
+# Console Symfony
+docker compose exec php php bin/console
+
+# Migrations
+docker compose exec php php bin/console doctrine:migrations:migrate
+
+# Fixtures
+docker compose exec php php bin/console doctrine:fixtures:load
+
+# Composer
+docker compose exec php composer install
+
+# Arrêt
+docker compose down
+```
+
+Les sources Vue et Symfony sont montées en volumes : il n'est pas nécessaire de reconstruire les images à chaque modification.
+
+## Configuration frontend
+
+Le frontend utilise `VITE_API_URL` pour joindre l'API. En développement Docker, cette valeur est injectée par `compose.yaml` et vaut `http://localhost:8080`.
+
+En production, l'image est construite avec :
+
+```text
+VITE_API_URL=https://api.progressia.app
+```
+
+## Production
+
+La configuration de production est définie dans `compose.prod.yaml`.
+
+Contrairement au développement, le code source n'est pas monté depuis le VPS. Les trois images suivantes contiennent les artefacts applicatifs :
+
+```text
+ghcr.io/dannebicque/progressia-front:<commit-sha>
+ghcr.io/dannebicque/progressia-api:<commit-sha>
+ghcr.io/dannebicque/progressia-api-nginx:<commit-sha>
+```
+
+Traefik expose :
+
+```text
+https://progressia.app      -> frontend Vue
+https://api.progressia.app  -> nginx -> PHP-FPM -> Symfony/API Platform
+```
+
+Les réseaux Docker externes `web` et `shared_internal` doivent déjà exister sur le VPS. `web` est utilisé par Traefik et `shared_internal` permet au backend de joindre les services partagés, notamment la base de données de production.
+
+### Variables de production
+
+Copier `.env.prod.example` vers `.env.prod.local` dans le répertoire de déploiement du VPS et renseigner les vraies valeurs :
+
+```sh
+cp .env.prod.example .env.prod.local
+```
+
+`.env.prod.local`, `.env.version` et le répertoire `jwt/` ne doivent jamais être commités.
+
+## CI/CD GitHub Actions
+
+### CI
+
+`.github/workflows/ci.yml` est exécuté sur les pull requests et sur `main`.
+
+Il vérifie :
+
+- l'installation et le build Vue/TypeScript ;
+- `composer.json` ;
+- l'installation des dépendances Symfony ;
+- la configuration YAML Symfony ;
+- le conteneur de services Symfony.
+
+### Déploiement
+
+`.github/workflows/deploy.yml` se déclenche uniquement après le succès de la CI sur `main`.
+
+Le workflow :
+
+1. construit les images frontend, PHP/Symfony et nginx API ;
+2. les publie sur GitHub Container Registry avec le SHA du commit et le tag `latest` ;
+3. copie `compose.prod.yaml` vers le VPS ;
+4. télécharge les nouvelles images ;
+5. redémarre les services ;
+6. génère les clés JWT si nécessaire ;
+7. exécute les migrations Doctrine ;
+8. reconstruit le cache Symfony.
+
+Secrets GitHub Actions requis :
+
+```text
+SSH_HOST
+SSH_PORT
+SSH_USER
+SSH_PRIVATE_KEY
+TARGET_COMPOSE_DIR
+GHCR_USERNAME
+GHCR_TOKEN
+```
+
+`TARGET_COMPOSE_DIR` peut par exemple valoir `/var/www/progressia`.
+
+`GHCR_TOKEN` doit disposer au minimum du droit `read:packages` afin que le VPS puisse télécharger les images privées depuis GHCR.
+
+## Développement frontend hors Docker
+
+Il reste possible de lancer uniquement le frontend localement :
 
 ```sh
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+La variable `VITE_API_URL` de `.env` est alors utilisée.
+
+## Scripts frontend
 
 ```sh
 npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
 npm run lint
+npm run format
 ```
 
-## Prototype ProgressIA (fr)
+## Backend
 
-Ce dépôt contient un prototype Vue 3 + Tailwind CSS pour créer et éditer des cours composés de séances rédigées en Markdown.
+Le backend Symfony/API Platform se trouve dans `backend/`.
 
-- Données fictives en JSON: [src/data/mock-courses.json](src/data/mock-courses.json#L1-L200)
-- Store Pinia: [src/stores/courses.ts](src/stores/courses.ts#L1-L200)
-- Pages principales: Home, Catalogue, Cours, Séance, Back-office, Dashboards (étudiant/enseignant)
+Principaux endpoints :
 
-Pour lancer le prototype:
-
-```sh
-npm install
-npm run dev
-```
-
-## Backend (API Symfony)
-
-Le front est désormais connecté à une **API découplée** Symfony 8 + API Platform, avec authentification **JWT**. Le code vit dans [backend/](backend/) (monorepo).
-
-Stack : Symfony 8.1, API Platform, Doctrine ORM, MariaDB (Docker), LexikJWTAuthenticationBundle, Nelmio CORS.
-
-### Lancer le backend
-
-```sh
-cd backend
-docker compose up -d                              # MariaDB (port hôte 3309)
-php bin/console doctrine:migrations:migrate -n    # schéma
-php bin/console doctrine:fixtures:load -n         # données de démo
-symfony server:start -d --no-tls                  # API sur http://127.0.0.1:8000
-```
-
-Comptes de démonstration (créés par les fixtures) :
-
-- Enseignant — `teacher@progressia.test` / `teacher`
-- Étudiant — `student@progressia.test` / `student`
-
-### Endpoints principaux
-
-- `POST /api/login` → renvoie un token JWT
-- `GET /api/me` → profil de l'utilisateur authentifié
-- `GET /api/courses` (public) → catalogue imbriqué (cours → séances → chapitres)
-- `POST|PATCH|DELETE /api/courses|sessions|chapters` → CRUD (réservé `ROLE_TEACHER`)
-- Docs interactives : http://127.0.0.1:8000/api
-
-### Connexion front ↔ back
-
-Le front lit l'URL de l'API dans [.env](.env) (`VITE_API_URL`). La couche d'appel est dans [src/api/client.ts](src/api/client.ts) (fetch + Bearer JWT). Les stores [auth](src/stores/auth.ts) et [courses](src/stores/courses.ts) consomment l'API.
-
-> **État de la migration** : l'arbre cours/séances/chapitres et l'authentification passent par l'API. La **gamification** (progression, points, badges, uploads, évaluations) est encore en `localStorage` — prévue en phase 2 (entités `Progress`/`Badge`/`Evaluation`/`Upload` côté API).
-
+- `POST /api/login` : authentification JWT ;
+- `GET /api/me` : profil de l'utilisateur authentifié ;
+- `GET /api/courses` : catalogue ;
+- `POST|PATCH|DELETE /api/courses|sessions|chapters` : CRUD enseignant ;
+- `/api` : documentation API Platform.
