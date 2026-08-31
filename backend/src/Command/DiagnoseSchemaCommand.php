@@ -29,13 +29,26 @@ final class DiagnoseSchemaCommand extends Command
 
         $database = (string) $this->connection->fetchOne('SELECT DATABASE()');
         $version = (string) $this->connection->fetchOne('SELECT VERSION()');
+        $platformClass = $this->connection->getDatabasePlatform()::class;
+        $params = $this->connection->getParams();
+        $configuredServerVersion = $params['serverVersion'] ?? '(détection automatique)';
 
         $io->title('Diagnostic du schéma Doctrine');
         $io->definitionList(
             ['Base' => $database],
             ['Serveur' => $version],
-            ['Plateforme Doctrine' => $this->connection->getDatabasePlatform()::class],
+            ['serverVersion configurée' => (string) $configuredServerVersion],
+            ['Plateforme Doctrine' => $platformClass],
         );
+
+        if (str_contains(strtolower($version), 'mariadb') && !str_contains($platformClass, 'MariaDB')) {
+            $io->error([
+                'Doctrine utilise une plateforme MySQL alors que le serveur est MariaDB.',
+                'Supprimez serverVersion de DATABASE_URL (recommandé pour la production) ou configurez exactement la version retournée par SELECT VERSION().',
+            ]);
+
+            return Command::FAILURE;
+        }
 
         $rows = $this->connection->fetchAllAssociative(<<<'SQL'
             SELECT TABLE_NAME, TABLE_TYPE, ENGINE, TABLE_COMMENT
