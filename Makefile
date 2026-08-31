@@ -130,7 +130,7 @@ prod-jwt:
 	$(PROD_COMPOSE) exec php php bin/console lexik:jwt:generate-keypair --skip-if-exists
 
 prod-db-version:
-	$(PROD_COMPOSE) exec php php bin/console doctrine:query:sql "SELECT VERSION() AS database_version"
+	$(PROD_COMPOSE) exec php php -r '$$u=parse_url(getenv("DATABASE_URL")); $$pdo=new PDO("mysql:host=".$$u["host"].";port=".($$u["port"] ?? 3306).";dbname=".ltrim($$u["path"], "/"), $$u["user"], $$u["pass"]); echo "Database version: ".$$pdo->query("SELECT VERSION()")->fetchColumn().PHP_EOL;'
 
 prod-doctrine-version:
 	$(PROD_COMPOSE) exec php sh -lc 'composer show doctrine/dbal; composer show doctrine/migrations; composer show doctrine/orm'
