@@ -8,10 +8,10 @@ PROD_COMPOSE := APP_VERSION=$(APP_VERSION) docker compose -f compose.prod.yaml
 
 .PHONY: help \
 	dev-up dev-down dev-restart dev-build dev-logs dev-ps dev-shell dev-console \
-	dev-migrate dev-migration-status dev-cache-clear dev-jwt dev-db \
+	dev-migrate dev-migration-status dev-cache-clear dev-jwt dev-db dev-schema-diagnose \
 	prod-pull prod-up prod-down prod-restart prod-logs prod-ps prod-shell prod-console \
 	prod-migrate prod-migration-status prod-cache-clear prod-cache-warmup prod-jwt \
-	prod-db-version prod-doctrine-version
+	prod-db-version prod-doctrine-version prod-schema-diagnose
 
 help:
 	@printf '%s\n' \
@@ -31,6 +31,7 @@ help:
 		'  make dev-cache-clear                Vide le cache Symfony' \
 		'  make dev-jwt                        Génère les clés JWT si nécessaire' \
 		'  make dev-db                         Ouvre la CLI MariaDB locale' \
+		'  make dev-schema-diagnose            Teste l’introspection Doctrine table par table' \
 		'' \
 		'PROD' \
 		'  make prod-pull                      Télécharge les images de production' \
@@ -48,6 +49,7 @@ help:
 		'  make prod-jwt                       Génère les clés JWT si nécessaire' \
 		'  make prod-db-version                Affiche la version réelle de MariaDB' \
 		'  make prod-doctrine-version          Affiche les versions Doctrine' \
+		'  make prod-schema-diagnose           Teste l’introspection Doctrine table par table' \
 		'' \
 		'APP_VERSION vaut "latest" par défaut. Exemple : make prod-up APP_VERSION=<sha>'
 
@@ -89,6 +91,9 @@ dev-jwt:
 
 dev-db:
 	$(DEV_COMPOSE) exec database mariadb -uprogressia -pprogressia progressia
+
+dev-schema-diagnose:
+	$(DEV_COMPOSE) exec php php bin/console app:diagnose-schema
 
 prod-pull:
 	$(PROD_COMPOSE) pull
@@ -134,3 +139,6 @@ prod-db-version:
 
 prod-doctrine-version:
 	$(PROD_COMPOSE) exec php sh -lc 'composer show doctrine/dbal; composer show doctrine/migrations; composer show doctrine/orm'
+
+prod-schema-diagnose:
+	$(PROD_COMPOSE) exec php php bin/console app:diagnose-schema
