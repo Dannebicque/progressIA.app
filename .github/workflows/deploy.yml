@@ -124,40 +124,35 @@ jobs:
 
             echo "APP_VERSION=${{ github.event.workflow_run.head_sha }}" > .env.version
 
-            docker compose \
-              --env-file .env.version \
-              -f compose.prod.yaml \
-              pull
+            COMPOSE="docker compose --env-file .env.version -f compose.prod.yaml"
 
-            docker compose \
-              --env-file .env.version \
-              -f compose.prod.yaml \
-              up -d
+            $COMPOSE pull
 
-            docker compose \
-              --env-file .env.version \
-              -f compose.prod.yaml \
-              exec -T php \
+            # Preflight the new API image before replacing the running containers.
+            # This also logs the real database and Doctrine versions, which makes
+            # MariaDB/DBAL schema-introspection failures actionable.
+            $COMPOSE run --rm --no-deps php \
+              php bin/console doctrine:query:sql "SELECT VERSION() AS database_version"
+
+            $COMPOSE run --rm --no-deps php sh -lc \
+              'composer show doctrine/dbal; composer show doctrine/migrations; composer show doctrine/orm'
+
+            $COMPOSE run --rm --no-deps php \
               php bin/console lexik:jwt:generate-keypair --skip-if-exists
 
-            docker compose \
-              --env-file .env.version \
-              -f compose.prod.yaml \
-              exec -T php \
+            # Migrations must succeed before the new application containers are
+            # put online. A failure leaves the currently running version intact.
+            $COMPOSE run --rm --no-deps php \
               php bin/console doctrine:migrations:migrate \
               --no-interaction \
               --allow-no-migration
 
-            docker compose \
-              --env-file .env.version \
-              -f compose.prod.yaml \
-              exec -T php \
+            $COMPOSE up -d --remove-orphans
+
+            $COMPOSE exec -T php \
               php bin/console cache:clear --env=prod
 
-            docker compose \
-              --env-file .env.version \
-              -f compose.prod.yaml \
-              exec -T php \
+            $COMPOSE exec -T php \
               php bin/console cache:warmup --env=prod
 
             docker image prune -f
